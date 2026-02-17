@@ -27,7 +27,6 @@
         }
         h2 { margin-top: 0; color: #333; }
         
-        /* Переключатель режимов */
         .mode-selector {
             display: flex;
             justify-content: center;
@@ -45,9 +44,7 @@
             font-weight: 500;
             transition: 0.2s;
         }
-        .mode-selector input[type="radio"] {
-            display: none;
-        }
+        .mode-selector input[type="radio"] { display: none; }
         .mode-selector input[type="radio"]:checked + span {
             background: white;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -71,10 +68,7 @@
             font-size: 16px;
             font-family: inherit;
         }
-        textarea {
-            resize: vertical;
-            min-height: 80px;
-        }
+        textarea { resize: vertical; min-height: 80px; }
         
         button {
             background-color: #0088cc;
@@ -96,6 +90,17 @@
         }
         button.secondary:hover { background-color: #d8dadf; }
         
+        /* Кнопка Telegram */
+        button.telegram {
+            background-color: #24A1DE;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        button.telegram:hover { background-color: #1f8bbf; }
+        
         #qrcode {
             margin-top: 20px;
             display: flex;
@@ -106,10 +111,7 @@
             border-radius: 8px;
             padding: 10px;
         }
-        #qrcode img {
-            max-width: 100%;
-            height: auto;
-        }
+        #qrcode img { max-width: 100%; height: auto; }
         
         #controls { display: none; margin-top: 15px; }
         
@@ -153,10 +155,7 @@
         </label>
     </div>
 
-    <!-- Поле для ссылки -->
     <input type="text" id="urlInput" placeholder="https://example.com" value="https://">
-    
-    <!-- Поле для текста (скрыто по умолчанию) -->
     <textarea id="textInput" class="hidden" placeholder="Введите любой текст..."></textarea>
     
     <button onclick="generateQR()">Сгенерировать QR</button>
@@ -166,6 +165,12 @@
     <div id="controls">
         <button class="secondary" onclick="copyContent()">Копировать содержимое</button>
         <button class="secondary" onclick="downloadQR()">Скачать QR картинку</button>
+        
+        <!-- Кнопка Поделиться -->
+        <button class="telegram" onclick="shareToMessenger()">
+            <span>✈️</span> Поделиться в Telegram
+        </button>
+        
         <div id="status" class="copy-status">Скопировано!</div>
     </div>
 
@@ -197,7 +202,6 @@
             textInput.classList.remove('hidden');
             textInput.value = "";
         }
-        // Сброс QR при переключении
         document.getElementById('qrcode').innerHTML = "";
         document.getElementById('controls').style.display = 'none';
     }
@@ -263,6 +267,27 @@
                 link.click();
                 document.body.removeChild(link);
             }
+        }
+    }
+
+    // 🔥 Умная функция отправки (работает даже без приложения)
+    function shareToMessenger() {
+        const content = getContent();
+        const message = `📱 QR-Код\n\n🔗 Ссылка: ${content}`;
+        
+        // 1. Пробуем системное меню "Поделиться" (телефоны)
+        if (navigator.share) {
+            navigator.share({
+                title: 'QR Код',
+                text: message,
+                url: content
+            }).catch(console.error);
+        } 
+        // 2. Если нет - открываем Telegram Web
+        else {
+            const encodedText = encodeURIComponent(message);
+            const encodedUrl = encodeURIComponent(content);
+            window.open(`https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`, '_blank');
         }
     }
 </script>
