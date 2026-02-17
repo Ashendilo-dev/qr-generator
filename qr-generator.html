@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Универсальный QR Генератор</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 10px;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        h2 { margin-top: 0; color: #333; }
+        
+        /* Переключатель режимов */
+        .mode-selector {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 15px;
+            background: #f0f2f5;
+            padding: 4px;
+            border-radius: 8px;
+        }
+        .mode-selector label {
+            flex: 1;
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: 0.2s;
+        }
+        .mode-selector input[type="radio"] {
+            display: none;
+        }
+        .mode-selector input[type="radio"]:checked + span {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            color: #0088cc;
+        }
+        .mode-selector span {
+            display: block;
+            width: 100%;
+            height: 100%;
+            padding: 4px;
+            border-radius: 6px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 16px;
+            font-family: inherit;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        button {
+            background-color: #0088cc;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #006699; }
+        button.secondary {
+            background-color: #e4e6eb;
+            color: #050505;
+            margin-top: 5px;
+        }
+        button.secondary:hover { background-color: #d8dadf; }
+        
+        #qrcode {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+            background: #fafafa;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        #qrcode img {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        #controls { display: none; margin-top: 15px; }
+        
+        .copy-status {
+            font-size: 12px;
+            color: green;
+            height: 15px;
+            margin-top: 5px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .info-box {
+            margin-top: 20px;
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            color: #005699;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 13px;
+            text-align: left;
+        }
+        .info-box h4 { margin: 0 0 5px 0; }
+        .info-box ul { padding-left: 20px; margin: 0; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>QR Генератор</h2>
+    
+    <div class="mode-selector">
+        <label>
+            <input type="radio" name="mode" value="link" checked onchange="toggleMode()">
+            <span>🔗 Ссылка</span>
+        </label>
+        <label>
+            <input type="radio" name="mode" value="text" onchange="toggleMode()">
+            <span>📝 Текст</span>
+        </label>
+    </div>
+
+    <!-- Поле для ссылки -->
+    <input type="text" id="urlInput" placeholder="https://example.com" value="https://">
+    
+    <!-- Поле для текста (скрыто по умолчанию) -->
+    <textarea id="textInput" class="hidden" placeholder="Введите любой текст..."></textarea>
+    
+    <button onclick="generateQR()">Сгенерировать QR</button>
+    
+    <div id="qrcode"></div>
+    
+    <div id="controls">
+        <button class="secondary" onclick="copyContent()">Копировать содержимое</button>
+        <button class="secondary" onclick="downloadQR()">Скачать QR картинку</button>
+        <div id="status" class="copy-status">Скопировано!</div>
+    </div>
+
+    <div class="info-box">
+        <h4>🖼️ Как передать картинку?</h4>
+        <p>QR-код не может хранить файл картинки напрямую. Сделайте так:</p>
+        <ul>
+            <li>Загрузите фото в Телеграм (в "Избранное") или на imgur.com.</li>
+            <li>Скопируйте <b>ссылку</b> на это фото.</li>
+            <li>Вставьте ссылку в поле выше (режим "Ссылка").</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    let qrcodeObj = null;
+
+    function toggleMode() {
+        const mode = document.querySelector('input[name="mode"]:checked').value;
+        const urlInput = document.getElementById('urlInput');
+        const textInput = document.getElementById('textInput');
+        
+        if (mode === 'link') {
+            urlInput.classList.remove('hidden');
+            textInput.classList.add('hidden');
+            urlInput.value = "https://";
+        } else {
+            urlInput.classList.add('hidden');
+            textInput.classList.remove('hidden');
+            textInput.value = "";
+        }
+        // Сброс QR при переключении
+        document.getElementById('qrcode').innerHTML = "";
+        document.getElementById('controls').style.display = 'none';
+    }
+
+    function getContent() {
+        const mode = document.querySelector('input[name="mode"]:checked').value;
+        if (mode === 'link') {
+            return document.getElementById('urlInput').value;
+        } else {
+            return document.getElementById('textInput').value;
+        }
+    }
+
+    function generateQR() {
+        const content = getContent();
+        const container = document.getElementById('qrcode');
+        const controls = document.getElementById('controls');
+        
+        if (!content) {
+            alert("Пожалуйста, введите данные");
+            return;
+        }
+
+        container.innerHTML = "";
+        
+        qrcodeObj = new QRCode(container, {
+            text: content,
+            width: 200,
+            height: 200,
+            colorDark : "#000000",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H
+        });
+
+        controls.style.display = 'block';
+    }
+
+    function copyContent() {
+        const content = getContent();
+        navigator.clipboard.writeText(content).then(() => {
+            const status = document.getElementById('status');
+            status.style.opacity = 1;
+            setTimeout(() => { status.style.opacity = 0; }, 2000);
+        });
+    }
+
+    function downloadQR() {
+        const img = document.querySelector('#qrcode img');
+        if (img && img.src) {
+            const link = document.createElement('a');
+            link.href = img.src;
+            link.download = 'qrcode.png';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } else {
+            const canvas = document.querySelector('#qrcode canvas');
+            if(canvas) {
+                const link = document.createElement('a');
+                link.href = canvas.toDataURL("image/png");
+                link.download = 'qrcode.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
