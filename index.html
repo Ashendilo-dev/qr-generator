@@ -332,7 +332,14 @@
   }
   .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
   .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-  .btn-detect { margin-top: 0; }
+  .inline-row { display: flex; gap: 10px; }
+  .inline-row input { flex: 1; min-width: 0; }
+  .inline-row .btn {
+    width: auto;
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 12px 16px;
+  }
   .auto-help {
     margin-top: 12px;
     font-size: 12.5px;
@@ -458,13 +465,11 @@
               <label for="botToken">Токен бота</label>
               <input type="password" id="botToken" placeholder="Вставьте токен" autocomplete="off">
             </div>
-            <div class="field-row">
-              <div class="field">
-                <label for="chatIdInput">Chat ID</label>
-                <input type="text" id="chatIdInput" placeholder="Узнается кнопкой" autocomplete="off">
-              </div>
-              <div class="field">
-                <button type="button" class="btn btn-secondary btn-detect" id="detectChatBtn">Узнать ID</button>
+            <div class="field">
+              <label for="chatIdInput">Chat ID</label>
+              <div class="inline-row">
+                <input type="text" id="chatIdInput" placeholder="Определится автоматически" autocomplete="off">
+                <button type="button" class="btn btn-secondary" id="detectChatBtn">Узнать ID</button>
               </div>
             </div>
             <label class="check" style="margin-top:10px">
