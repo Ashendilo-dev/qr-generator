@@ -381,9 +381,24 @@
   .viewseg { margin-bottom: 20px; }
   .viewseg button { font-size: 15px; padding: 11px 12px; }
 
-  .chat-layout { display: grid; grid-template-columns: 1fr; gap: 24px; }
-  @media (min-width: 860px) {
-    .chat-layout { grid-template-columns: 1fr 1fr; align-items: start; }
+  .chat-input-row { display: flex; gap: 10px; margin-top: 12px; }
+  .chat-input {
+    flex: 1;
+    min-width: 0;
+    padding: 12px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 13px;
+    background: var(--field);
+    color: var(--text);
+    font: inherit;
+    font-size: 15px;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  }
+  .chat-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: var(--field-focus);
+    box-shadow: 0 0 0 4px var(--accent-soft);
   }
   .chat-feed-lg { max-height: 420px; }
 
@@ -624,31 +639,39 @@
     </section>
 
     <section id="viewChat" hidden>
-      <div class="chat-layout">
-        <div class="chat-col">
-          <div class="field">
-            <label for="msgrSelect">Мессенджер</label>
-            <select id="msgrSelect">
-              <option value="telegram">Telegram</option>
-              <option value="max">MAX</option>
-            </select>
-          </div>
+      <div class="chat chat-feed-lg" id="chatFeed">
+        <div class="chat-empty" id="chatEmpty">Сообщений пока нет. Напишите боту в Telegram — сообщение появится здесь.</div>
+      </div>
+      <div class="chat-input-row">
+        <input type="text" id="chatInput" class="chat-input" placeholder="Сообщение…" autocomplete="off">
+        <button type="button" class="btn btn-primary" id="chatSendBtn">Отправить</button>
+      </div>
+      <p class="hint" id="autoStatus"></p>
+
+      <details class="settings">
+        <summary>
+          Настройки подключения
+          <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="settings-body">
           <div class="field">
             <label for="botToken">Токен бота</label>
-            <input type="password" id="botToken" placeholder="Вставьте токен" autocomplete="off">
+            <input type="password" id="botToken" placeholder="От @BotFather" autocomplete="off">
           </div>
-          <div class="field">
-            <label for="chatId-andrey">Chat ID — Андрей</label>
-            <div class="inline-row">
-              <input type="text" id="chatId-andrey" placeholder="Определится автоматически" autocomplete="off">
-              <button type="button" class="btn btn-secondary detect-btn" data-detect="andrey">Узнать</button>
+          <div class="field-row">
+            <div class="field">
+              <label for="chatId-andrey">Андрей</label>
+              <div class="inline-row">
+                <input type="text" id="chatId-andrey" placeholder="Chat ID" autocomplete="off">
+                <button type="button" class="btn btn-secondary detect-btn" data-detect="andrey">Узнать</button>
+              </div>
             </div>
-          </div>
-          <div class="field">
-            <label for="chatId-nastya">Chat ID — Настя</label>
-            <div class="inline-row">
-              <input type="text" id="chatId-nastya" placeholder="Определится автоматически" autocomplete="off">
-              <button type="button" class="btn btn-secondary detect-btn" data-detect="nastya">Узнать</button>
+            <div class="field">
+              <label for="chatId-nastya">Настя</label>
+              <div class="inline-row">
+                <input type="text" id="chatId-nastya" placeholder="Chat ID" autocomplete="off">
+                <button type="button" class="btn btn-secondary detect-btn" data-detect="nastya">Узнать</button>
+              </div>
             </div>
           </div>
           <label class="check" style="margin-top:10px">
@@ -657,32 +680,21 @@
           </label>
           <label class="check" style="margin-top:8px">
             <input type="checkbox" id="autoSendToggle">
-            Отправлять QR автоматически (себе в мессенджер)
+            Отправлять QR автоматически (себе в Telegram)
           </label>
-          <p class="hint" id="autoStatus"></p>
-          <button type="button" class="btn btn-secondary" id="sendNowBtn">Отправить QR сейчас</button>
+          <button type="button" class="btn btn-secondary" id="sendNowBtn" style="margin-top:12px">Отправить QR сейчас</button>
           <div class="auto-help" id="autoHelp"></div>
         </div>
+      </details>
 
-        <div class="chat-col">
-          <div class="chat chat-feed-lg" id="chatFeed">
-            <div class="chat-empty" id="chatEmpty">Сообщений пока нет. Напишите боту в мессенджере — сообщение появится здесь.</div>
-          </div>
-          <div class="inline-row" style="margin-top:10px">
-            <input type="text" id="chatInput" placeholder="Сообщение…" autocomplete="off">
-            <button type="button" class="btn btn-secondary" id="chatSendBtn">Отправить</button>
-          </div>
-
-          <div class="protect-box">
-            <div class="protect-title">Защита данных</div>
-            <p class="hint" id="whoAmI"></p>
-            <div class="protect-actions">
-              <button type="button" class="btn btn-secondary" id="logoutBtn">Выйти</button>
-              <button type="button" class="btn btn-secondary btn-danger" id="wipeBtn">Стереть все данные</button>
-            </div>
-            <p class="hint">Логины и пароли хранятся только в этом браузере (хеш с солью), сессия живёт до закрытия вкладки и блокируется после 10 минут простоя. Токен маскируется; история сообщений не сохраняется на диск. Учтите: тексты проходят через серверы мессенджера — для по-настоящему секретного общения используйте E2E-чат.</p>
-          </div>
+      <div class="protect-box">
+        <div class="protect-title">Защита данных</div>
+        <p class="hint" id="whoAmI"></p>
+        <div class="protect-actions">
+          <button type="button" class="btn btn-secondary" id="logoutBtn">Выйти</button>
+          <button type="button" class="btn btn-secondary btn-danger" id="wipeBtn">Стереть все данные</button>
         </div>
+        <p class="hint">Логины и пароли хранятся только в этом браузере (хеш с солью), сессия живёт до закрытия вкладки и блокируется после 10 минут простоя. Токен маскируется; история сообщений не сохраняется на диск. Учтите: тексты проходят через серверы Telegram — для по-настоящему секретного общения используйте E2E-чат.</p>
       </div>
     </section>
   </main>
@@ -1196,12 +1208,11 @@
 
   // ---------- Messenger chat (roles, inbox, auto-send) ----------
   // Browser cannot write into a messenger by itself, so everything goes through
-  // the user's own bot: Telegram Bot API and MAX Bot API both allow CORS.
-  // Two fixed roles (Andrey / Nastya) each have a dialog with the bot; the web
-  // page sends to the other role's chat and polls incoming messages.
+  // the user's own Telegram bot (Bot API allows CORS). Two fixed roles
+  // (Andrey / Nastya) each have a dialog with the bot; the web page sends to
+  // the other role's chat and polls incoming messages.
   var AUTO_KEY = 'qrgen:auto';
   var cfg = {
-    target: 'telegram',
     token: '',
     auto: false,
     activeRole: 'andrey',
@@ -1215,7 +1226,7 @@
     if (savedAuto) {
       // Migrate the old single-chatId format.
       if (savedAuto.chatId && !savedAuto.roles) cfg.roles.andrey.chatId = savedAuto.chatId;
-      ['target', 'token', 'auto', 'activeRole'].forEach(function (k) {
+      ['token', 'auto', 'activeRole'].forEach(function (k) {
         if (savedAuto[k] !== undefined) cfg[k] = savedAuto[k];
       });
       if (savedAuto.roles) {
@@ -1233,18 +1244,11 @@
   }
   function otherRole(key) { return key === 'andrey' ? 'nastya' : 'andrey'; }
 
-  var AUTO_HELP = {
-    telegram: '<b>Telegram:</b><ol>' +
-      '<li>@BotFather → <code>/newbot</code> → скопируйте токен.</li>' +
-      '<li>Вставьте токен и напишите боту любое сообщение от Андрея и от Насти.</li>' +
-      '<li>Нажмите «Узнать» в строке каждого участника — Chat ID определится по последнему сообщению.</li></ol>' +
-      'Сообщения из Telegram появляются в ленте; кнопка «Отправить» шлёт сообщение второму участнику. QR автоматически уходит в ваш чат.',
-    max: '<b>MAX:</b><ol>' +
-      '<li>Создайте бота и получите токен (dev.max.ru).</li>' +
-      '<li>Вставьте токен и напишите боту любое сообщение от Андрея и от Насти.</li>' +
-      '<li>Нажмите «Узнать» в строке каждого участника.</li></ol>' +
-      'Работает так же, как с Telegram. Опрос входящих может занимать до 30 секунд.'
-  };
+  var AUTO_HELP = '<b>Подключение:</b><ol>' +
+    '<li>@BotFather → <code>/newbot</code> → скопируйте токен и вставьте его выше.</li>' +
+    '<li>Пусть и Андрей, и Настя напишут боту любое сообщение.</li>' +
+    '<li>Нажмите «Узнать» у каждого — Chat ID определится по последнему сообщению.</li></ol>' +
+    'После этого сообщения из Telegram появляются в ленте, а кнопка «Отправить» шлёт сообщение второму участнику.';
 
   function setAutoStatus(text, isError) {
     var el = $('autoStatus');
@@ -1284,19 +1288,8 @@
     $('whoAmI').textContent = sessionUser ?
       'Вы вошли как ' + cfg.roles[cfg.activeRole].name + '.' :
       'Вход не выполнен.';
-    $('chatInput').placeholder = 'Сообщение для ' + cfg.roles[otherRole(cfg.activeRole)].name + '…';
   }
 
-  function updateAutoHelp() {
-    $('autoHelp').innerHTML = AUTO_HELP[cfg.target] || '';
-  }
-
-  $('msgrSelect').addEventListener('change', function () {
-    cfg.target = this.value;
-    saveAuto();
-    updateAutoHelp();
-    setAutoStatus('');
-  });
   $('botToken').addEventListener('input', function () {
     cfg.token = this.value.trim();
     saveAuto();
@@ -1314,13 +1307,12 @@
   });
 
   // Restore UI state.
-  $('msgrSelect').value = cfg.target;
   $('botToken').value = cfg.token;
   $('chatId-andrey').value = cfg.roles.andrey.chatId;
   $('chatId-nastya').value = cfg.roles.nastya.chatId;
   $('autoSendToggle').checked = cfg.auto;
   updateChatIdentity();
-  updateAutoHelp();
+  $('autoHelp').innerHTML = AUTO_HELP;
 
   function networkError(err) {
     return err && err.message === 'Failed to fetch' ? 'Ошибка сети — проверьте подключение' : (err && err.message) || 'Ошибка';
@@ -1346,43 +1338,19 @@
       saveAuto();
       setAutoStatus(role.name + ': ID ' + role.chatId + (shownName ? ' (' + shownName + ')' : ''));
     };
-    if (cfg.target === 'telegram') {
-      fetch('https://api.telegram.org/bot' + encodeURIComponent(cfg.token) + '/getUpdates')
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-          if (!d.ok) throw new Error(d.description || 'Неверный токен');
-          var msgs = (d.result || []).filter(function (u) { return u.message && u.message.chat; });
-          if (!msgs.length) {
-            setAutoStatus('Пусть ' + role.name + ' напишет боту любое сообщение в Telegram, затем нажмите снова', true);
-            return;
-          }
-          var m = msgs[msgs.length - 1].message;
-          apply(m.chat.id, m.from && m.from.id, m.chat.first_name || m.chat.username || '');
-        })
-        .catch(function (err) { setAutoStatus(networkError(err), true); });
-    } else {
-      fetch('https://platform-api2.max.ru/updates', { headers: { Authorization: cfg.token } })
-        .then(function (r) {
-          if (r.status === 401) throw new Error('Неверный токен');
-          return r.json();
-        })
-        .then(function (d) {
-          var ups = d.updates || [];
-          var found = null;
-          for (var i = ups.length - 1; i >= 0; i--) {
-            var m = ups[i].message;
-            if (m && ((m.recipient && m.recipient.chat_id) || m.chat_id)) { found = m; break; }
-          }
-          if (!found) {
-            setAutoStatus('Пусть ' + role.name + ' напишет боту любое сообщение в MAX, затем нажмите снова (до 30 секунд)', true);
-            return;
-          }
-          apply(found.recipient ? found.recipient.chat_id : found.chat_id,
-            found.sender && found.sender.user_id,
-            found.sender && found.sender.name || '');
-        })
-        .catch(function (err) { setAutoStatus(networkError(err), true); });
-    }
+    fetch('https://api.telegram.org/bot' + encodeURIComponent(cfg.token) + '/getUpdates')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.ok) throw new Error(d.description || 'Неверный токен');
+        var msgs = (d.result || []).filter(function (u) { return u.message && u.message.chat; });
+        if (!msgs.length) {
+          setAutoStatus('Пусть ' + role.name + ' напишет боту любое сообщение в Telegram, затем нажмите снова', true);
+          return;
+        }
+        var m = msgs[msgs.length - 1].message;
+        apply(m.chat.id, m.from && m.from.id, m.chat.first_name || m.chat.username || '');
+      })
+      .catch(function (err) { setAutoStatus(networkError(err), true); });
   }
   Array.prototype.forEach.call(document.querySelectorAll('.detect-btn'), function (b) {
     b.addEventListener('click', function () { detectForRole(b.dataset.detect); });
@@ -1452,45 +1420,24 @@
     if ($('viewChat').hidden || !$('inboxToggle').checked) return;
     pollBusy = true;
     var done = function () { pollBusy = false; };
-    if (cfg.target === 'telegram') {
-      fetch('https://api.telegram.org/bot' + encodeURIComponent(cfg.token) + '/getUpdates')
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-          if (!d.ok) return;
-          (d.result || []).forEach(function (u) {
-            var m = u.message;
-            if (!m) return;
-            var text = m.text || m.caption || '';
-            if (!text) return;
-            var key = 'tg-' + u.update_id;
-            if (seenUpdates[key]) return;
-            markSeen(key);
-            var rk = roleByChatId(m.chat && m.chat.id);
-            var name = rk ? cfg.roles[rk].name : (m.chat && (m.chat.first_name || m.chat.title || m.chat.username)) || 'Telegram';
-            addFeed(name, text, (m.date || 0) * 1000, false);
-          });
-          done();
-        }, done);
-    } else {
-      fetch('https://platform-api2.max.ru/updates', { headers: { Authorization: cfg.token } })
-        .then(function (r) { if (!r.ok) throw 0; return r.json(); })
-        .then(function (d) {
-          (d.updates || []).forEach(function (u) {
-            var m = u.message;
-            if (!m) return;
-            var text = m.body && m.body.text;
-            if (!text) return;
-            var key = 'max-' + (u.update_id !== undefined ? u.update_id :
-              ((m.timestamp || 0) + '|' + text + '|' + ((m.sender && m.sender.user_id) || 0)));
-            if (seenUpdates[key]) return;
-            markSeen(key);
-            var rk = roleByChatId(m.recipient && m.recipient.chat_id) || roleByUserId(m.sender && m.sender.user_id);
-            var name = rk ? cfg.roles[rk].name : (m.sender && m.sender.name) || 'MAX';
-            addFeed(name, text, (m.timestamp || 0) * 1000, false);
-          });
-          done();
-        }, done);
-    }
+    fetch('https://api.telegram.org/bot' + encodeURIComponent(cfg.token) + '/getUpdates')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.ok) return;
+        (d.result || []).forEach(function (u) {
+          var m = u.message;
+          if (!m) return;
+          var text = m.text || m.caption || '';
+          if (!text) return;
+          var key = 'tg-' + u.update_id;
+          if (seenUpdates[key]) return;
+          markSeen(key);
+          var rk = roleByChatId(m.chat && m.chat.id);
+          var name = rk ? cfg.roles[rk].name : (m.chat && (m.chat.first_name || m.chat.title || m.chat.username)) || 'Telegram';
+          addFeed(name, text, (m.date || 0) * 1000, false);
+        });
+        done();
+      }, done);
   }
   setInterval(pollInbox, 5000);
 
@@ -1510,33 +1457,13 @@
   function sendText(text, roleKey) {
     var role = cfg.roles[roleKey];
     if (!role.chatId) return Promise.reject(new Error('Не задан Chat ID для ' + role.name));
-    if (cfg.target === 'telegram') return tgSendMessage(role.chatId, text);
-    return maxSend(text, role, false);
-  }
-
-  function maxSend(text, role, useUserId) {
-    var id = useUserId ? (role.userId || role.chatId) : role.chatId;
-    var param = (useUserId ? 'user_id=' : 'chat_id=') + encodeURIComponent(id);
-    return fetch('https://platform-api2.max.ru/messages?' + param, {
-      method: 'POST',
-      headers: { Authorization: cfg.token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: text })
-    }).then(function (r) {
-      // Dialogs in MAX are addressed by user_id; retry if chat_id was rejected.
-      if (r.status === 400 && !useUserId) return maxSend(text, role, true);
-      if (!r.ok) {
-        return r.json().catch(function () { return {}; }).then(function (d) {
-          throw new Error((d.message && String(d.message).trim()) || 'Ошибка MAX (код ' + r.status + ')');
-        });
-      }
-    });
+    return tgSendMessage(role.chatId, text);
   }
 
   function sendQrPayload(payload) {
     // QR content goes to the current user's own chat.
     var me = cfg.roles[cfg.activeRole];
     if (!me.chatId) return Promise.reject(new Error('Не задан ваш Chat ID (' + me.name + ')'));
-    if (cfg.target === 'max') return maxSend(payload, me, false);
     return tgSendMessage(me.chatId, payload).then(function () {
       // Photo is a bonus: text message is already delivered at this point.
       return new Promise(function (resolve) {
@@ -1553,10 +1480,6 @@
         }, 'image/png');
       });
     });
-  }
-
-  function messengerName() {
-    return cfg.target === 'telegram' ? 'Telegram' : 'MAX';
   }
 
   var autoTimer = null;
@@ -1580,7 +1503,7 @@
       sendQrPayload(state.payload).then(function () {
         lastAutoPayload = state.payload;
         lastAutoAt = Date.now();
-        showToast('Отправлено в ' + messengerName());
+        showToast('Отправлено в Telegram');
       }, function (err) {
         setAutoStatus('Автоотправка: ' + err.message, true);
       });
@@ -1601,7 +1524,7 @@
       lastAutoPayload = state.payload;
       lastAutoAt = Date.now();
       setAutoStatus('');
-      showToast('Отправлено в ' + messengerName());
+      showToast('Отправлено в Telegram');
     }, function (err) {
       setAutoStatus(err.message, true);
     });
