@@ -352,6 +352,89 @@
   .auto-help li { margin: 3px 0; }
   #autoStatus { min-height: 18px; margin: 10px 0 0; }
 
+  .seg {
+    display: flex;
+    gap: 6px;
+    background: var(--tab-bg);
+    border-radius: 11px;
+    padding: 4px;
+  }
+  .seg button {
+    flex: 1;
+    padding: 8px 10px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: color 0.2s, background 0.2s;
+  }
+  .seg button.active {
+    background: var(--card);
+    color: var(--accent);
+    box-shadow: 0 2px 6px rgba(22, 25, 43, 0.12);
+  }
+
+  .chat {
+    margin-top: 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--field);
+    padding: 12px;
+    max-height: 280px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .chat-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 14px 6px; }
+  .msg { display: flex; gap: 9px; align-items: flex-start; }
+  .msg.me { flex-direction: row-reverse; }
+  .avatar {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .msg.me .avatar { background: var(--border); color: var(--muted); }
+  .bubble {
+    max-width: 78%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px 11px;
+    font-size: 14px;
+  }
+  .msg.me .bubble { background: var(--accent-soft); border-color: transparent; }
+  .bubble-meta {
+    display: flex; gap: 8px;
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+  .bubble-meta b { color: var(--text); font-weight: 600; }
+  .bubble-text { word-break: break-word; white-space: pre-wrap; }
+
+  .protect-box {
+    margin-top: 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    background: var(--field);
+  }
+  .protect-title { font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 10px; }
+  .protect-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .protect-actions .btn { width: auto; flex: 1 1 auto; padding: 10px 14px; font-size: 14px; }
+  .protect-box .hint { font-size: 12px; }
+  .btn-danger:hover { border-color: var(--danger); color: var(--danger); }
+
   /* ---------- Footer / toast ---------- */
   .footer {
     margin-top: 18px;
@@ -450,35 +533,98 @@
 
         <details class="settings" id="autoSettings">
           <summary>
-            Отправка в мессенджер
+            Чат через мессенджер
             <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
           </summary>
           <div class="settings-body">
-            <div class="field">
-              <label for="msgrSelect">Куда отправлять</label>
-              <select id="msgrSelect">
-                <option value="telegram">Telegram</option>
-                <option value="max">MAX</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="botToken">Токен бота</label>
-              <input type="password" id="botToken" placeholder="Вставьте токен" autocomplete="off">
-            </div>
-            <div class="field">
-              <label for="chatIdInput">Chat ID</label>
-              <div class="inline-row">
-                <input type="text" id="chatIdInput" placeholder="Определится автоматически" autocomplete="off">
-                <button type="button" class="btn btn-secondary" id="detectChatBtn">Узнать ID</button>
+
+            <div id="lockView" hidden>
+              <div class="field">
+                <label for="pinInput">Панель защищена PIN-кодом</label>
+                <input type="password" id="pinInput" placeholder="Введите PIN" autocomplete="off">
               </div>
+              <button type="button" class="btn btn-secondary" id="unlockBtn">Разблокировать</button>
+              <p class="hint" id="lockStatus"></p>
             </div>
-            <label class="check" style="margin-top:10px">
-              <input type="checkbox" id="autoSendToggle">
-              Отправлять автоматически при генерации
-            </label>
-            <div class="auto-help" id="autoHelp"></div>
-            <p class="hint" id="autoStatus"></p>
-            <button type="button" class="btn btn-secondary" id="sendNowBtn">Отправить сейчас</button>
+
+            <div id="chatView" hidden>
+              <div class="field">
+                <label>Кто я</label>
+                <div class="seg" id="roleSeg">
+                  <button type="button" data-role="andrey">Андрей</button>
+                  <button type="button" data-role="nastya">Настя</button>
+                </div>
+              </div>
+              <div class="field">
+                <label for="msgrSelect">Мессенджер</label>
+                <select id="msgrSelect">
+                  <option value="telegram">Telegram</option>
+                  <option value="max">MAX</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="botToken">Токен бота</label>
+                <input type="password" id="botToken" placeholder="Вставьте токен" autocomplete="off">
+              </div>
+              <div class="field">
+                <label for="chatId-andrey">Chat ID — Андрей</label>
+                <div class="inline-row">
+                  <input type="text" id="chatId-andrey" placeholder="Определится автоматически" autocomplete="off">
+                  <button type="button" class="btn btn-secondary detect-btn" data-detect="andrey">Узнать</button>
+                </div>
+              </div>
+              <div class="field">
+                <label for="chatId-nastya">Chat ID — Настя</label>
+                <div class="inline-row">
+                  <input type="text" id="chatId-nastya" placeholder="Определится автоматически" autocomplete="off">
+                  <button type="button" class="btn btn-secondary detect-btn" data-detect="nastya">Узнать</button>
+                </div>
+              </div>
+              <label class="check" style="margin-top:10px">
+                <input type="checkbox" id="inboxToggle" checked>
+                Показывать входящие сообщения
+              </label>
+              <label class="check" style="margin-top:8px">
+                <input type="checkbox" id="autoSendToggle">
+                Отправлять QR автоматически (себе в мессенджер)
+              </label>
+
+              <div class="chat" id="chatFeed">
+                <div class="chat-empty" id="chatEmpty">Сообщений пока нет. Напишите боту в мессенджере — сообщение появится здесь.</div>
+              </div>
+              <div class="inline-row" style="margin-top:10px">
+                <input type="text" id="chatInput" placeholder="Сообщение…" autocomplete="off">
+                <button type="button" class="btn btn-secondary" id="chatSendBtn">Отправить</button>
+              </div>
+
+              <p class="hint" id="autoStatus"></p>
+
+              <div class="protect-box">
+                <div class="protect-title">Защита данных</div>
+                <div class="protect-actions">
+                  <button type="button" class="btn btn-secondary" id="setPinBtn">Установить PIN</button>
+                  <button type="button" class="btn btn-secondary btn-danger" id="wipeBtn">Стереть все данные</button>
+                </div>
+                <div id="pinSetup" hidden>
+                  <div class="field">
+                    <label for="pinNew">Новый PIN (мин. 4 символа)</label>
+                    <input type="password" id="pinNew" autocomplete="new-password">
+                  </div>
+                  <div class="field">
+                    <label for="pinRepeat">Повторите PIN</label>
+                    <input type="password" id="pinRepeat" autocomplete="new-password">
+                  </div>
+                  <div class="protect-actions">
+                    <button type="button" class="btn btn-secondary" id="pinSaveBtn">Сохранить PIN</button>
+                    <button type="button" class="btn btn-secondary" id="pinCancelBtn">Отмена</button>
+                  </div>
+                </div>
+                <p class="hint">Токен маскируется и хранится только в этом браузере; история сообщений не сохраняется на диск. PIN блокирует панель, включая авто-lock через 5 минут простоя. Учтите: тексты проходят через серверы мессенджера — для по-настоящему секретного общения используйте E2E-чат.</p>
+              </div>
+
+              <div class="auto-help" id="autoHelp"></div>
+              <button type="button" class="btn btn-secondary" id="sendNowBtn">Отправить QR сейчас</button>
+            </div>
           </div>
         </details>
       </section>
@@ -998,36 +1144,60 @@
     }
   });
 
-  // ---------- Messenger auto-send ----------
-  // Browser cannot write into a messenger by itself, so sending goes through
+  // ---------- Messenger chat (roles, inbox, auto-send) ----------
+  // Browser cannot write into a messenger by itself, so everything goes through
   // the user's own bot: Telegram Bot API and MAX Bot API both allow CORS.
+  // Two fixed roles (Andrey / Nastya) each have a dialog with the bot; the web
+  // page sends to the other role's chat and polls incoming messages.
   var AUTO_KEY = 'qrgen:auto';
-  var autoCfg = { target: 'telegram', token: '', chatId: '', auto: false };
+  var cfg = {
+    target: 'telegram',
+    token: '',
+    auto: false,
+    activeRole: 'andrey',
+    roles: {
+      andrey: { name: 'Андрей', chatId: '', userId: '' },
+      nastya: { name: 'Настя', chatId: '', userId: '' }
+    },
+    pinHash: '',
+    pinSalt: ''
+  };
   try {
     var savedAuto = JSON.parse(localStorage.getItem(AUTO_KEY) || 'null');
     if (savedAuto) {
-      Object.keys(autoCfg).forEach(function (k) {
-        if (savedAuto[k] !== undefined) autoCfg[k] = savedAuto[k];
+      // Migrate the old single-chatId format.
+      if (savedAuto.chatId && !savedAuto.roles) cfg.roles.andrey.chatId = savedAuto.chatId;
+      ['target', 'token', 'auto', 'activeRole', 'pinHash', 'pinSalt'].forEach(function (k) {
+        if (savedAuto[k] !== undefined) cfg[k] = savedAuto[k];
       });
+      if (savedAuto.roles) {
+        ['andrey', 'nastya'].forEach(function (r) {
+          if (savedAuto.roles[r]) {
+            cfg.roles[r].chatId = savedAuto.roles[r].chatId || '';
+            cfg.roles[r].userId = savedAuto.roles[r].userId || '';
+          }
+        });
+      }
     }
   } catch (e) { /* corrupted storage */ }
   function saveAuto() {
-    try { localStorage.setItem(AUTO_KEY, JSON.stringify(autoCfg)); } catch (e) { /* private mode */ }
+    try { localStorage.setItem(AUTO_KEY, JSON.stringify(cfg)); } catch (e) { /* private mode */ }
   }
+  function otherRole(key) { return key === 'andrey' ? 'nastya' : 'andrey'; }
+
+  var unlocked = !cfg.pinHash;
 
   var AUTO_HELP = {
     telegram: '<b>Telegram:</b><ol>' +
-      '<li>Откройте @BotFather → <code>/newbot</code> → скопируйте токен.</li>' +
-      '<li>Вставьте токен в поле выше.</li>' +
-      '<li>Напишите вашему боту любое сообщение.</li>' +
-      '<li>Нажмите «Узнать ID».</li></ol>' +
-      'При отправке в чат приходят текст и картинка QR-кода. Токен хранится только в этом браузере.',
+      '<li>@BotFather → <code>/newbot</code> → скопируйте токен.</li>' +
+      '<li>Вставьте токен и напишите боту любое сообщение от Андрея и от Насти.</li>' +
+      '<li>Нажмите «Узнать» в строке каждого участника — Chat ID определится по последнему сообщению.</li></ol>' +
+      'Сообщения из Telegram появляются в ленте; кнопка «Отправить» шлёт сообщение второму участнику. QR автоматически уходит в ваш чат.',
     max: '<b>MAX:</b><ol>' +
       '<li>Создайте бота и получите токен (dev.max.ru).</li>' +
-      '<li>Вставьте токен в поле выше.</li>' +
-      '<li>Напишите вашему боту любое сообщение.</li>' +
-      '<li>Нажмите «Узнать ID».</li></ol>' +
-      'В MAX отправляется текст (содержимое QR). Токен хранится только в этом браузере.'
+      '<li>Вставьте токен и напишите боту любое сообщение от Андрея и от Насти.</li>' +
+      '<li>Нажмите «Узнать» в строке каждого участника.</li></ol>' +
+      'Работает так же, как с Telegram. Опрос входящих может занимать до 30 секунд.'
   };
 
   function setAutoStatus(text, isError) {
@@ -1036,128 +1206,361 @@
     el.classList.toggle('warn', !!isError);
   }
 
+  // ---------- PIN protection ----------
+  function hashPin(pin, salt) {
+    var msg = salt + ':' + pin;
+    if (window.crypto && crypto.subtle && window.TextEncoder) {
+      return crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg)).then(function (buf) {
+        return Array.prototype.map.call(new Uint8Array(buf), function (b) {
+          return ('0' + b.toString(16)).slice(-2);
+        }).join('');
+      });
+    }
+    // Weak fallback for environments without WebCrypto.
+    var h = 0x811c9dc5;
+    for (var i = 0; i < msg.length; i++) {
+      h ^= msg.charCodeAt(i);
+      h = (h * 0x01000193) >>> 0;
+    }
+    return Promise.resolve('fnv-' + h.toString(16) + '-' + msg.length);
+  }
+
+  var pinFails = 0;
+  var pinLockUntil = 0;
+
+  function showLockView(locked) {
+    $('lockView').hidden = !locked;
+    $('chatView').hidden = locked;
+  }
+  showLockView(!unlocked);
+
+  function lockPanel() {
+    unlocked = false;
+    $('pinInput').value = '';
+    showLockView(true);
+  }
+
+  $('unlockBtn').addEventListener('click', function () {
+    if (Date.now() < pinLockUntil) return;
+    var pin = $('pinInput').value;
+    if (!pin) return;
+    hashPin(pin, cfg.pinSalt).then(function (h) {
+      if (h === cfg.pinHash) {
+        unlocked = true;
+        pinFails = 0;
+        $('lockStatus').textContent = '';
+        $('pinInput').value = '';
+        showLockView(false);
+      } else {
+        pinFails++;
+        if (pinFails >= 5) {
+          pinLockUntil = Date.now() + 30000;
+          pinFails = 0;
+          $('lockStatus').textContent = 'Слишком много попыток. Подождите 30 секунд.';
+        } else {
+          $('lockStatus').textContent = 'Неверный PIN (осталось попыток: ' + (5 - pinFails) + ')';
+        }
+      }
+    });
+  });
+  $('pinInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') $('unlockBtn').click();
+  });
+
+  // Auto-lock after 5 minutes of inactivity.
+  var idleTimer = null;
+  function armIdleLock() {
+    clearTimeout(idleTimer);
+    if (!cfg.pinHash || !unlocked) return;
+    idleTimer = setTimeout(lockPanel, 5 * 60 * 1000);
+  }
+  document.addEventListener('pointerdown', armIdleLock);
+  document.addEventListener('keydown', armIdleLock);
+  armIdleLock();
+
+  $('setPinBtn').addEventListener('click', function () {
+    $('pinSetup').hidden = false;
+    $('pinNew').value = '';
+    $('pinRepeat').value = '';
+    $('pinNew').focus();
+  });
+  $('pinCancelBtn').addEventListener('click', function () {
+    $('pinSetup').hidden = true;
+  });
+  $('pinSaveBtn').addEventListener('click', function () {
+    var p1 = $('pinNew').value;
+    var p2 = $('pinRepeat').value;
+    if (p1.length < 4) { setAutoStatus('PIN должен быть не короче 4 символов', true); return; }
+    if (p1 !== p2) { setAutoStatus('PIN-коды не совпадают', true); return; }
+    cfg.pinSalt = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    hashPin(p1, cfg.pinSalt).then(function (h) {
+      cfg.pinHash = h;
+      saveAuto();
+      unlocked = true;
+      $('pinSetup').hidden = true;
+      showLockView(false);
+      showToast('PIN установлен');
+    });
+  });
+
+  $('wipeBtn').addEventListener('click', function () {
+    if (!window.confirm('Стереть токен, Chat ID, PIN и все настройки чата из этого браузера?')) return;
+    try { localStorage.removeItem(AUTO_KEY); } catch (e) { /* private mode */ }
+    location.reload();
+  });
+
+  // ---------- Config UI ----------
+  function updateRoleSeg() {
+    Array.prototype.forEach.call($('roleSeg').children, function (b) {
+      b.classList.toggle('active', b.dataset.role === cfg.activeRole);
+    });
+    $('chatInput').placeholder = 'Сообщение для ' + cfg.roles[otherRole(cfg.activeRole)].name + '…';
+  }
+  Array.prototype.forEach.call($('roleSeg').children, function (b) {
+    b.addEventListener('click', function () {
+      cfg.activeRole = b.dataset.role;
+      saveAuto();
+      updateRoleSeg();
+    });
+  });
+
   function updateAutoHelp() {
-    $('autoHelp').innerHTML = AUTO_HELP[autoCfg.target] || '';
+    $('autoHelp').innerHTML = AUTO_HELP[cfg.target] || '';
   }
 
   $('msgrSelect').addEventListener('change', function () {
-    autoCfg.target = this.value;
+    cfg.target = this.value;
     saveAuto();
     updateAutoHelp();
     setAutoStatus('');
   });
   $('botToken').addEventListener('input', function () {
-    autoCfg.token = this.value.trim();
+    cfg.token = this.value.trim();
     saveAuto();
   });
-  $('chatIdInput').addEventListener('input', function () {
-    autoCfg.chatId = this.value.trim();
-    saveAuto();
+  ['andrey', 'nastya'].forEach(function (r) {
+    $('chatId-' + r).addEventListener('input', function () {
+      cfg.roles[r].chatId = this.value.trim();
+      saveAuto();
+    });
   });
   $('autoSendToggle').addEventListener('change', function () {
-    autoCfg.auto = this.checked;
+    cfg.auto = this.checked;
     saveAuto();
     setAutoStatus(this.checked ? 'Автоотправка включена' : '');
   });
 
   // Restore UI state.
-  $('msgrSelect').value = autoCfg.target;
-  $('botToken').value = autoCfg.token;
-  $('chatIdInput').value = autoCfg.chatId;
-  $('autoSendToggle').checked = autoCfg.auto;
+  $('msgrSelect').value = cfg.target;
+  $('botToken').value = cfg.token;
+  $('chatId-andrey').value = cfg.roles.andrey.chatId;
+  $('chatId-nastya').value = cfg.roles.nastya.chatId;
+  $('autoSendToggle').checked = cfg.auto;
+  updateRoleSeg();
   updateAutoHelp();
 
-  $('detectChatBtn').addEventListener('click', function () {
-    if (!autoCfg.token) {
+  function networkError(err) {
+    return err && err.message === 'Failed to fetch' ? 'Ошибка сети — проверьте подключение' : (err && err.message) || 'Ошибка';
+  }
+
+  // ---------- Detect chat ids per role ----------
+  function detectForRole(roleKey) {
+    if (!cfg.token) {
       setAutoStatus('Сначала введите токен бота', true);
       return;
     }
-    setAutoStatus('Определяю Chat ID…');
-    if (autoCfg.target === 'telegram') {
-      fetch('https://api.telegram.org/bot' + encodeURIComponent(autoCfg.token) + '/getUpdates')
+    var role = cfg.roles[roleKey];
+    setAutoStatus('Определяю Chat ID для ' + role.name + '…');
+    var apply = function (chatId, userId, shownName) {
+      var other = cfg.roles[otherRole(roleKey)];
+      if (chatId && other.chatId && String(chatId) === other.chatId) {
+        setAutoStatus('Этот ID уже закреплён за ' + other.name + ' — пусть ' + role.name + ' напишет боту последним и нажмите снова', true);
+        return;
+      }
+      role.chatId = String(chatId);
+      role.userId = userId ? String(userId) : '';
+      $('chatId-' + roleKey).value = role.chatId;
+      saveAuto();
+      setAutoStatus(role.name + ': ID ' + role.chatId + (shownName ? ' (' + shownName + ')' : ''));
+    };
+    if (cfg.target === 'telegram') {
+      fetch('https://api.telegram.org/bot' + encodeURIComponent(cfg.token) + '/getUpdates')
         .then(function (r) { return r.json(); })
         .then(function (d) {
           if (!d.ok) throw new Error(d.description || 'Неверный токен');
           var msgs = (d.result || []).filter(function (u) { return u.message && u.message.chat; });
           if (!msgs.length) {
-            setAutoStatus('Напишите боту любое сообщение в Telegram, затем нажмите снова', true);
+            setAutoStatus('Пусть ' + role.name + ' напишет боту любое сообщение в Telegram, затем нажмите снова', true);
             return;
           }
-          var id = String(msgs[msgs.length - 1].message.chat.id);
-          autoCfg.chatId = id;
-          $('chatIdInput').value = id;
-          saveAuto();
-          setAutoStatus('Chat ID найден: ' + id);
+          var m = msgs[msgs.length - 1].message;
+          apply(m.chat.id, m.from && m.from.id, m.chat.first_name || m.chat.username || '');
         })
-        .catch(function (err) {
-          setAutoStatus(err.message === 'Failed to fetch' ? 'Ошибка сети — проверьте подключение' : err.message, true);
-        });
+        .catch(function (err) { setAutoStatus(networkError(err), true); });
     } else {
-      fetch('https://platform-api2.max.ru/updates', { headers: { Authorization: autoCfg.token } })
+      fetch('https://platform-api2.max.ru/updates', { headers: { Authorization: cfg.token } })
         .then(function (r) {
           if (r.status === 401) throw new Error('Неверный токен');
           return r.json();
         })
         .then(function (d) {
           var ups = d.updates || [];
-          var chatId = null;
+          var found = null;
           for (var i = ups.length - 1; i >= 0; i--) {
             var m = ups[i].message;
-            if (m && m.recipient && m.recipient.chat_id) { chatId = m.recipient.chat_id; break; }
-            if (m && m.chat_id) { chatId = m.chat_id; break; }
+            if (m && ((m.recipient && m.recipient.chat_id) || m.chat_id)) { found = m; break; }
           }
-          if (chatId === null) {
-            setAutoStatus('Напишите боту любое сообщение в MAX, затем нажмите снова (до 30 секунд)', true);
+          if (!found) {
+            setAutoStatus('Пусть ' + role.name + ' напишет боту любое сообщение в MAX, затем нажмите снова (до 30 секунд)', true);
             return;
           }
-          autoCfg.chatId = String(chatId);
-          $('chatIdInput').value = autoCfg.chatId;
-          saveAuto();
-          setAutoStatus('Chat ID найден: ' + autoCfg.chatId);
+          apply(found.recipient ? found.recipient.chat_id : found.chat_id,
+            found.sender && found.sender.user_id,
+            found.sender && found.sender.name || '');
         })
-        .catch(function (err) {
-          setAutoStatus(err.message === 'Failed to fetch' ? 'Ошибка сети — проверьте подключение' : err.message, true);
-        });
+        .catch(function (err) { setAutoStatus(networkError(err), true); });
     }
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.detect-btn'), function (b) {
+    b.addEventListener('click', function () { detectForRole(b.dataset.detect); });
   });
 
-  function sendToTelegram(payload) {
-    var base = 'https://api.telegram.org/bot' + encodeURIComponent(autoCfg.token) + '/';
-    return fetch(base + 'sendMessage', {
+  // ---------- Feed ----------
+  var seenUpdates = {};
+  function markSeen(key) {
+    var n = 0, k;
+    seenUpdates[key] = true;
+    for (k in seenUpdates) n++;
+    if (n > 400) seenUpdates = {}; // keep memory bounded
+  }
+
+  function roleByChatId(id) {
+    if (id === null || id === undefined) return null;
+    var s = String(id);
+    if (cfg.roles.andrey.chatId && cfg.roles.andrey.chatId === s) return 'andrey';
+    if (cfg.roles.nastya.chatId && cfg.roles.nastya.chatId === s) return 'nastya';
+    return null;
+  }
+  function roleByUserId(id) {
+    if (id === null || id === undefined) return null;
+    var s = String(id);
+    if (cfg.roles.andrey.userId && cfg.roles.andrey.userId === s) return 'andrey';
+    if (cfg.roles.nastya.userId && cfg.roles.nastya.userId === s) return 'nastya';
+    return null;
+  }
+
+  function addFeed(name, text, ts, isMe) {
+    var feed = $('chatFeed');
+    var empty = $('chatEmpty');
+    if (empty) empty.parentNode.removeChild(empty);
+    var row = document.createElement('div');
+    row.className = 'msg' + (isMe ? ' me' : '');
+    var av = document.createElement('span');
+    av.className = 'avatar';
+    av.textContent = (name || '?').trim().charAt(0).toUpperCase() || '?';
+    var bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    var meta = document.createElement('div');
+    meta.className = 'bubble-meta';
+    var b = document.createElement('b');
+    b.textContent = name;
+    var time = document.createElement('span');
+    var d = new Date(ts || Date.now());
+    time.textContent = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    meta.appendChild(b);
+    meta.appendChild(time);
+    var txt = document.createElement('div');
+    txt.className = 'bubble-text';
+    txt.textContent = text;
+    bubble.appendChild(meta);
+    bubble.appendChild(txt);
+    row.appendChild(av);
+    row.appendChild(bubble);
+    feed.appendChild(row);
+    feed.scrollTop = feed.scrollHeight;
+  }
+
+  // ---------- Incoming polling ----------
+  // Updates are not confirmed (no offset/marker is sent), so several browsers
+  // can watch the same bot; duplicates are filtered by update id in memory.
+  var pollBusy = false;
+  function pollInbox() {
+    if (!unlocked || pollBusy || !cfg.token) return;
+    if (!$('autoSettings').open || !$('inboxToggle').checked) return;
+    pollBusy = true;
+    var done = function () { pollBusy = false; };
+    if (cfg.target === 'telegram') {
+      fetch('https://api.telegram.org/bot' + encodeURIComponent(cfg.token) + '/getUpdates')
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!d.ok) return;
+          (d.result || []).forEach(function (u) {
+            var m = u.message;
+            if (!m) return;
+            var text = m.text || m.caption || '';
+            if (!text) return;
+            var key = 'tg-' + u.update_id;
+            if (seenUpdates[key]) return;
+            markSeen(key);
+            var rk = roleByChatId(m.chat && m.chat.id);
+            var name = rk ? cfg.roles[rk].name : (m.chat && (m.chat.first_name || m.chat.title || m.chat.username)) || 'Telegram';
+            addFeed(name, text, (m.date || 0) * 1000, false);
+          });
+          done();
+        }, done);
+    } else {
+      fetch('https://platform-api2.max.ru/updates', { headers: { Authorization: cfg.token } })
+        .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+        .then(function (d) {
+          (d.updates || []).forEach(function (u) {
+            var m = u.message;
+            if (!m) return;
+            var text = m.body && m.body.text;
+            if (!text) return;
+            var key = 'max-' + (u.update_id !== undefined ? u.update_id :
+              ((m.timestamp || 0) + '|' + text + '|' + ((m.sender && m.sender.user_id) || 0)));
+            if (seenUpdates[key]) return;
+            markSeen(key);
+            var rk = roleByChatId(m.recipient && m.recipient.chat_id) || roleByUserId(m.sender && m.sender.user_id);
+            var name = rk ? cfg.roles[rk].name : (m.sender && m.sender.name) || 'MAX';
+            addFeed(name, text, (m.timestamp || 0) * 1000, false);
+          });
+          done();
+        }, done);
+    }
+  }
+  setInterval(pollInbox, 5000);
+
+  // ---------- Sending ----------
+  function tgSendMessage(chatId, text) {
+    return fetch('https://api.telegram.org/bot' + encodeURIComponent(cfg.token) + '/sendMessage', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: autoCfg.chatId, text: payload })
+      body: JSON.stringify({ chat_id: chatId, text: text })
     }).then(function (r) {
       return r.json();
     }).then(function (d) {
       if (!d.ok) throw new Error(d.description || 'Ошибка Telegram');
-    }).then(function () {
-      // Photo is a bonus: text message is already delivered at this point.
-      return new Promise(function (resolve) {
-        var c = renderCanvas(512);
-        if (!c || !c.toBlob) { resolve(); return; }
-        c.toBlob(function (blob) {
-          if (!blob) { resolve(); return; }
-          var fd = new FormData();
-          fd.append('chat_id', autoCfg.chatId);
-          fd.append('caption', 'QR-код (' + TYPES[state.type].label + ')');
-          fd.append('photo', blob, 'qrcode.png');
-          fetch(base + 'sendPhoto', { method: 'POST', body: fd })
-            .then(resolve, resolve);
-        }, 'image/png');
-      });
     });
   }
 
-  function sendToMax(payload, useUserId) {
-    var param = (useUserId ? 'user_id=' : 'chat_id=') + encodeURIComponent(autoCfg.chatId);
+  function sendText(text, roleKey) {
+    var role = cfg.roles[roleKey];
+    if (!role.chatId) return Promise.reject(new Error('Не задан Chat ID для ' + role.name));
+    if (cfg.target === 'telegram') return tgSendMessage(role.chatId, text);
+    return maxSend(text, role, false);
+  }
+
+  function maxSend(text, role, useUserId) {
+    var id = useUserId ? (role.userId || role.chatId) : role.chatId;
+    var param = (useUserId ? 'user_id=' : 'chat_id=') + encodeURIComponent(id);
     return fetch('https://platform-api2.max.ru/messages?' + param, {
       method: 'POST',
-      headers: { Authorization: autoCfg.token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: payload })
+      headers: { Authorization: cfg.token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text })
     }).then(function (r) {
       // Dialogs in MAX are addressed by user_id; retry if chat_id was rejected.
-      if (r.status === 400 && !useUserId) return sendToMax(payload, true);
+      if (r.status === 400 && !useUserId) return maxSend(text, role, true);
       if (!r.ok) {
         return r.json().catch(function () { return {}; }).then(function (d) {
           throw new Error((d.message && String(d.message).trim()) || 'Ошибка MAX (код ' + r.status + ')');
@@ -1166,9 +1569,31 @@
     });
   }
 
-  function sendPayload(payload) {
-    if (autoCfg.target === 'telegram') return sendToTelegram(payload);
-    return sendToMax(payload, false);
+  function sendQrPayload(payload) {
+    // QR content goes to the current user's own chat.
+    var me = cfg.roles[cfg.activeRole];
+    if (!me.chatId) return Promise.reject(new Error('Не задан ваш Chat ID (' + me.name + ')'));
+    if (cfg.target === 'max') return maxSend(payload, me, false);
+    return tgSendMessage(me.chatId, payload).then(function () {
+      // Photo is a bonus: text message is already delivered at this point.
+      return new Promise(function (resolve) {
+        var c = renderCanvas(512);
+        if (!c || !c.toBlob) { resolve(); return; }
+        c.toBlob(function (blob) {
+          if (!blob) { resolve(); return; }
+          var fd = new FormData();
+          fd.append('chat_id', me.chatId);
+          fd.append('caption', 'QR-код (' + TYPES[state.type].label + ')');
+          fd.append('photo', blob, 'qrcode.png');
+          fetch('https://api.telegram.org/bot' + encodeURIComponent(cfg.token) + '/sendPhoto', { method: 'POST', body: fd })
+            .then(resolve, resolve);
+        }, 'image/png');
+      });
+    });
+  }
+
+  function messengerName() {
+    return cfg.target === 'telegram' ? 'Telegram' : 'MAX';
   }
 
   var autoTimer = null;
@@ -1178,7 +1603,9 @@
   var AUTO_MIN_INTERVAL = 5000;
 
   function maybeAutoSend() {
-    if (!autoCfg.auto || !autoCfg.token || !autoCfg.chatId) return;
+    if (!cfg.auto || !cfg.token) return;
+    var me = cfg.roles[cfg.activeRole];
+    if (!me.chatId) return;
     if (!state.payload || state.payload === lastAutoPayload) return;
     clearTimeout(autoTimer);
     autoTimer = setTimeout(function retry() {
@@ -1187,10 +1614,10 @@
         autoTimer = setTimeout(retry, wait);
         return;
       }
-      sendPayload(state.payload).then(function () {
+      sendQrPayload(state.payload).then(function () {
         lastAutoPayload = state.payload;
         lastAutoAt = Date.now();
-        showToast('Отправлено в ' + (autoCfg.target === 'telegram' ? 'Telegram' : 'MAX'));
+        showToast('Отправлено в ' + messengerName());
       }, function (err) {
         setAutoStatus('Автоотправка: ' + err.message, true);
       });
@@ -1202,20 +1629,47 @@
       setAutoStatus('Сначала введите данные для QR', true);
       return;
     }
-    if (!autoCfg.token || !autoCfg.chatId) {
+    if (!cfg.token) {
       $('autoSettings').open = true;
-      setAutoStatus('Укажите токен бота и Chat ID', true);
+      setAutoStatus('Укажите токен бота', true);
       return;
     }
     setAutoStatus('Отправляю…');
-    sendPayload(state.payload).then(function () {
+    sendQrPayload(state.payload).then(function () {
       lastAutoPayload = state.payload;
       lastAutoAt = Date.now();
       setAutoStatus('');
-      showToast('Отправлено в ' + (autoCfg.target === 'telegram' ? 'Telegram' : 'MAX'));
+      showToast('Отправлено в ' + messengerName());
     }, function (err) {
       setAutoStatus(err.message, true);
     });
+  });
+
+  function sendChatMessage() {
+    var input = $('chatInput');
+    var text = input.value.trim();
+    if (!text) return;
+    if (!cfg.token) {
+      setAutoStatus('Введите токен бота', true);
+      return;
+    }
+    var other = cfg.roles[otherRole(cfg.activeRole)];
+    if (!other.chatId) {
+      setAutoStatus('Сначала узнайте Chat ID для ' + other.name, true);
+      return;
+    }
+    setAutoStatus('Отправляю…');
+    sendText(text, otherRole(cfg.activeRole)).then(function () {
+      input.value = '';
+      setAutoStatus('');
+      addFeed('Я (' + cfg.roles[cfg.activeRole].name + ')', text, Date.now(), true);
+    }, function (err) {
+      setAutoStatus(err.message, true);
+    });
+  }
+  $('chatSendBtn').addEventListener('click', sendChatMessage);
+  $('chatInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') sendChatMessage();
   });
 
   // ---------- Init ----------
