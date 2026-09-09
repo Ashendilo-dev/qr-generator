@@ -693,6 +693,10 @@
             Показывать входящие сообщения
           </label>
           <label class="check" style="margin-top:8px">
+            <input type="checkbox" id="sendPartnerToggle">
+            Отправлять сообщения также <span id="sendPartnerName"></span>
+          </label>
+          <label class="check" style="margin-top:8px">
             <input type="checkbox" id="autoSendToggle">
             Отправлять QR автоматически (себе в Telegram)
           </label>
@@ -1229,6 +1233,7 @@
   var cfg = {
     token: '',
     auto: false,
+    sendPartner: false,
     activeRole: 'andrey',
     roles: {
       andrey: { name: 'Андрей', chatId: '', userId: '' },
@@ -1240,7 +1245,7 @@
     if (savedAuto) {
       // Migrate the old single-chatId format.
       if (savedAuto.chatId && !savedAuto.roles) cfg.roles.andrey.chatId = savedAuto.chatId;
-      ['token', 'auto', 'activeRole'].forEach(function (k) {
+      ['token', 'auto', 'sendPartner', 'activeRole'].forEach(function (k) {
         if (savedAuto[k] !== undefined) cfg[k] = savedAuto[k];
       });
       if (savedAuto.roles) {
@@ -1262,7 +1267,8 @@
     '<li>@BotFather → <code>/newbot</code> → скопируйте токен и вставьте его выше.</li>' +
     '<li>Один раз напишите боту любое сообщение и нажмите «Узнать» — на каждом устройстве.</li></ol>' +
     'Chat ID собеседника подхватится сам: как только он напишет боту, ID определится автоматически. ' +
-    'После этого сообщения из Telegram появляются в ленте, а кнопка «Отправить» шлёт сообщение второму участнику.';
+    'После этого сообщения из Telegram появляются в ленте; «Отправить» шлёт текст вам в Telegram, ' +
+    'а с галочкой «Отправлять сообщения также …» — ещё и собеседнику.';
 
   function setAutoStatus(text, isError) {
     var el = $('autoStatus');
@@ -1305,12 +1311,13 @@
       'Вход не выполнен.';
     $('chatIdSelfLabel').textContent = 'Ваш Chat ID — ' + role.name;
     $('chatIdSelf').value = role.chatId;
+    $('sendPartnerName').textContent = PARTNER_LABELS[otherRole(cfg.activeRole)].dative;
     updatePartnerStatus();
   }
 
   var PARTNER_LABELS = {
-    andrey: { genitive: 'Андрея', pronoun: 'он' },
-    nastya: { genitive: 'Насти', pronoun: 'она' }
+    andrey: { genitive: 'Андрея', dative: 'Андрею', pronoun: 'он' },
+    nastya: { genitive: 'Насти', dative: 'Насте', pronoun: 'она' }
   };
 
   function updatePartnerStatus() {
@@ -1343,6 +1350,11 @@
     cfg.roles[cfg.activeRole].chatId = this.value.trim();
     saveAuto();
   });
+  $('sendPartnerToggle').addEventListener('change', function () {
+    cfg.sendPartner = this.checked;
+    saveAuto();
+    if (this.checked) setAutoStatus('Сообщения будут дублироваться ' + PARTNER_LABELS[otherRole(cfg.activeRole)].dative);
+  });
   $('autoSendToggle').addEventListener('change', function () {
     cfg.auto = this.checked;
     saveAuto();
@@ -1351,6 +1363,7 @@
 
   // Restore UI state.
   $('botToken').value = cfg.token;
+  $('sendPartnerToggle').checked = cfg.sendPartner;
   $('autoSendToggle').checked = cfg.auto;
   updateChatIdentity();
   $('autoHelp').innerHTML = AUTO_HELP;
@@ -1589,16 +1602,25 @@
       setAutoStatus('Введите токен бота', true);
       return;
     }
-    var other = cfg.roles[otherRole(cfg.activeRole)];
-    if (!other.chatId) {
-      setAutoStatus('Сначала узнайте Chat ID для ' + other.name, true);
+    var me = cfg.roles[cfg.activeRole];
+    if (!me.chatId) {
+      setAutoStatus('Сначала узнайте свой Chat ID — напишите боту и нажмите «Узнать»', true);
+      return;
+    }
+    var partnerKey = otherRole(cfg.activeRole);
+    if (cfg.sendPartner && !cfg.roles[partnerKey].chatId) {
+      var labels = PARTNER_LABELS[partnerKey];
+      setAutoStatus('Chat ID ' + labels.genitive + ' ещё не определён — он появится сам, когда ' + labels.pronoun + ' напишет боту (или снимите галочку дубля)', true);
       return;
     }
     setAutoStatus('Отправляю…');
-    sendText(text, otherRole(cfg.activeRole)).then(function () {
+    // Own chat always gets the message; the partner copy is optional.
+    var sends = [sendText(text, cfg.activeRole)];
+    if (cfg.sendPartner) sends.push(sendText(text, partnerKey));
+    Promise.all(sends).then(function () {
       input.value = '';
       setAutoStatus('');
-      addFeed('Я (' + cfg.roles[cfg.activeRole].name + ')', text, Date.now(), true);
+      addFeed('Я (' + me.name + ')', text, Date.now(), true);
     }, function (err) {
       setAutoStatus(err.message, true);
     });
