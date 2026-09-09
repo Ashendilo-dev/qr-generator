@@ -264,6 +264,24 @@
   }
   .preset:hover { transform: scale(1.1); border-color: var(--accent); }
   .settings-body .field { margin-top: 14px; }
+  .partner-status {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .partner-status .mini-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--accent);
+    font: inherit;
+    font-size: 12.5px;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .partner-status .mini-link:hover { color: var(--danger); }
 
   /* ---------- Preview ---------- */
   .preview {
@@ -659,22 +677,17 @@
             <label for="botToken">Токен бота</label>
             <input type="password" id="botToken" placeholder="От @BotFather" autocomplete="off">
           </div>
-          <div class="field-row">
-            <div class="field">
-              <label for="chatId-andrey">Андрей</label>
-              <div class="inline-row">
-                <input type="text" id="chatId-andrey" placeholder="Chat ID" autocomplete="off">
-                <button type="button" class="btn btn-secondary detect-btn" data-detect="andrey">Узнать</button>
-              </div>
-            </div>
-            <div class="field">
-              <label for="chatId-nastya">Настя</label>
-              <div class="inline-row">
-                <input type="text" id="chatId-nastya" placeholder="Chat ID" autocomplete="off">
-                <button type="button" class="btn btn-secondary detect-btn" data-detect="nastya">Узнать</button>
-              </div>
+          <div class="field">
+            <label for="chatIdSelf" id="chatIdSelfLabel">Ваш Chat ID</label>
+            <div class="inline-row">
+              <input type="text" id="chatIdSelf" placeholder="Chat ID" autocomplete="off">
+              <button type="button" class="btn btn-secondary" id="detectBtn">Узнать</button>
             </div>
           </div>
+          <p class="hint partner-status" id="partnerStatus">
+            <span id="partnerStatusText"></span>
+            <button type="button" class="mini-link" id="partnerReset" hidden>сменить</button>
+          </p>
           <label class="check" style="margin-top:10px">
             <input type="checkbox" id="inboxToggle" checked>
             Показывать входящие сообщения
@@ -1247,8 +1260,8 @@
 
   var AUTO_HELP = '<b>Подключение:</b><ol>' +
     '<li>@BotFather → <code>/newbot</code> → скопируйте токен и вставьте его выше.</li>' +
-    '<li>Пусть и Андрей, и Настя напишут боту любое сообщение.</li>' +
-    '<li>Нажмите «Узнать» у каждого — Chat ID определится по последнему сообщению.</li></ol>' +
+    '<li>Один раз напишите боту любое сообщение и нажмите «Узнать» — на каждом устройстве.</li></ol>' +
+    'Chat ID собеседника подхватится сам: как только он напишет боту, ID определится автоматически. ' +
     'После этого сообщения из Telegram появляются в ленте, а кнопка «Отправить» шлёт сообщение второму участнику.';
 
   function setAutoStatus(text, isError) {
@@ -1286,20 +1299,49 @@
 
   // ---------- Config UI ----------
   function updateChatIdentity() {
+    var role = cfg.roles[cfg.activeRole];
     $('whoAmI').textContent = sessionUser ?
-      'Вы вошли как ' + cfg.roles[cfg.activeRole].name + '.' :
+      'Вы вошли как ' + role.name + '.' :
       'Вход не выполнен.';
+    $('chatIdSelfLabel').textContent = 'Ваш Chat ID — ' + role.name;
+    $('chatIdSelf').value = role.chatId;
+    updatePartnerStatus();
   }
+
+  var PARTNER_LABELS = {
+    andrey: { genitive: 'Андрея', pronoun: 'он' },
+    nastya: { genitive: 'Насти', pronoun: 'она' }
+  };
+
+  function updatePartnerStatus() {
+    var partnerKey = otherRole(cfg.activeRole);
+    var partner = cfg.roles[partnerKey];
+    var labels = PARTNER_LABELS[partnerKey];
+    if (partner.chatId) {
+      $('partnerStatusText').textContent = 'Chat ID ' + labels.genitive + ': ' + partner.chatId + ' ✓';
+      $('partnerReset').hidden = false;
+    } else {
+      $('partnerStatusText').textContent = 'Chat ID ' + labels.genitive + ': появится сам, когда ' + labels.pronoun + ' напишет боту';
+      $('partnerReset').hidden = true;
+    }
+  }
+
+  $('partnerReset').addEventListener('click', function () {
+    var partner = cfg.roles[otherRole(cfg.activeRole)];
+    partner.chatId = '';
+    partner.userId = '';
+    saveAuto();
+    updatePartnerStatus();
+    setAutoStatus('Chat ID собеседника сброшен — определится заново от следующего сообщения боту');
+  });
 
   $('botToken').addEventListener('input', function () {
     cfg.token = this.value.trim();
     saveAuto();
   });
-  ['andrey', 'nastya'].forEach(function (r) {
-    $('chatId-' + r).addEventListener('input', function () {
-      cfg.roles[r].chatId = this.value.trim();
-      saveAuto();
-    });
+  $('chatIdSelf').addEventListener('input', function () {
+    cfg.roles[cfg.activeRole].chatId = this.value.trim();
+    saveAuto();
   });
   $('autoSendToggle').addEventListener('change', function () {
     cfg.auto = this.checked;
@@ -1309,8 +1351,6 @@
 
   // Restore UI state.
   $('botToken').value = cfg.token;
-  $('chatId-andrey').value = cfg.roles.andrey.chatId;
-  $('chatId-nastya').value = cfg.roles.nastya.chatId;
   $('autoSendToggle').checked = cfg.auto;
   updateChatIdentity();
   $('autoHelp').innerHTML = AUTO_HELP;
@@ -1335,7 +1375,7 @@
       }
       role.chatId = String(chatId);
       role.userId = userId ? String(userId) : '';
-      $('chatId-' + roleKey).value = role.chatId;
+      $('chatIdSelf').value = role.chatId;
       saveAuto();
       setAutoStatus(role.name + ': ID ' + role.chatId + (shownName ? ' (' + shownName + ')' : ''));
     };
@@ -1353,9 +1393,7 @@
       })
       .catch(function (err) { setAutoStatus(networkError(err), true); });
   }
-  Array.prototype.forEach.call(document.querySelectorAll('.detect-btn'), function (b) {
-    b.addEventListener('click', function () { detectForRole(b.dataset.detect); });
-  });
+  $('detectBtn').addEventListener('click', function () { detectForRole(cfg.activeRole); });
 
   // ---------- Feed ----------
   var seenUpdates = {};
@@ -1434,6 +1472,18 @@
           if (seenUpdates[key]) return;
           markSeen(key);
           var rk = roleByChatId(m.chat && m.chat.id);
+          if (!rk && m.chat && cfg.roles[cfg.activeRole].chatId) {
+            var partnerKey = otherRole(cfg.activeRole);
+            if (!cfg.roles[partnerKey].chatId) {
+              // Auto-capture: the first unknown sender becomes the partner.
+              cfg.roles[partnerKey].chatId = String(m.chat.id);
+              if (m.from && m.from.id) cfg.roles[partnerKey].userId = String(m.from.id);
+              saveAuto();
+              updatePartnerStatus();
+              setAutoStatus(cfg.roles[partnerKey].name + ': ID ' + cfg.roles[partnerKey].chatId + ' ✓');
+              rk = partnerKey;
+            }
+          }
           var name = rk ? cfg.roles[rk].name : (m.chat && (m.chat.first_name || m.chat.title || m.chat.username)) || 'Telegram';
           addFeed(name, text, (m.date || 0) * 1000, false);
         });
