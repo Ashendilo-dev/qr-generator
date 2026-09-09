@@ -377,6 +377,14 @@
     color: var(--accent);
     box-shadow: 0 2px 6px rgba(22, 25, 43, 0.12);
   }
+  .viewseg { margin-bottom: 20px; }
+  .viewseg button { font-size: 15px; padding: 11px 12px; }
+
+  .chat-layout { display: grid; grid-template-columns: 1fr; gap: 24px; }
+  @media (min-width: 860px) {
+    .chat-layout { grid-template-columns: 1fr 1fr; align-items: start; }
+  }
+  .chat-feed-lg { max-height: 420px; }
 
   .chat {
     margin-top: 14px;
@@ -466,6 +474,50 @@
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
   .toast svg { width: 17px; height: 17px; color: #4ade80; flex-shrink: 0; }
 
+  /* ---------- Auth overlay ---------- */
+  .auth {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background:
+      radial-gradient(600px 400px at 8% -10%, var(--bg-accent), transparent 70%),
+      radial-gradient(700px 500px at 105% 15%, var(--bg-accent), transparent 70%),
+      var(--bg);
+  }
+  .auth[hidden] { display: none; }
+  .auth-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    box-shadow: var(--shadow);
+    padding: 28px;
+    width: 100%;
+    max-width: 400px;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    text-align: center;
+  }
+  .auth-card .brand-icon { margin: 0 auto 14px; }
+  .auth-card h2 { margin: 0 0 16px; font-size: 22px; letter-spacing: -0.02em; }
+  .auth-card .field { text-align: left; }
+  .auth-card .btn-primary { margin-top: 6px; }
+  .divider { height: 1px; background: var(--border); margin: 18px 0; }
+  .linklike {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 13px;
+    text-decoration: underline;
+    cursor: pointer;
+    margin-top: 10px;
+  }
+  .linklike:hover { color: var(--danger); }
+
   :focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 2px; }
 </style>
 </head>
@@ -483,6 +535,12 @@
   </header>
 
   <main class="card">
+    <div class="seg viewseg" id="viewSeg">
+      <button type="button" data-view="qr" class="active">QR-код</button>
+      <button type="button" data-view="chat">Сообщения</button>
+    </div>
+
+    <section id="viewQr">
     <nav class="tabs" id="tabs" role="tablist" aria-label="Тип QR-кода"></nav>
 
     <div class="layout">
@@ -530,103 +588,6 @@
             </div>
           </div>
         </details>
-
-        <details class="settings" id="autoSettings">
-          <summary>
-            Чат через мессенджер
-            <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-          </summary>
-          <div class="settings-body">
-
-            <div id="lockView" hidden>
-              <div class="field">
-                <label for="pinInput">Панель защищена PIN-кодом</label>
-                <input type="password" id="pinInput" placeholder="Введите PIN" autocomplete="off">
-              </div>
-              <button type="button" class="btn btn-secondary" id="unlockBtn">Разблокировать</button>
-              <p class="hint" id="lockStatus"></p>
-            </div>
-
-            <div id="chatView" hidden>
-              <div class="field">
-                <label>Кто я</label>
-                <div class="seg" id="roleSeg">
-                  <button type="button" data-role="andrey">Андрей</button>
-                  <button type="button" data-role="nastya">Настя</button>
-                </div>
-              </div>
-              <div class="field">
-                <label for="msgrSelect">Мессенджер</label>
-                <select id="msgrSelect">
-                  <option value="telegram">Telegram</option>
-                  <option value="max">MAX</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="botToken">Токен бота</label>
-                <input type="password" id="botToken" placeholder="Вставьте токен" autocomplete="off">
-              </div>
-              <div class="field">
-                <label for="chatId-andrey">Chat ID — Андрей</label>
-                <div class="inline-row">
-                  <input type="text" id="chatId-andrey" placeholder="Определится автоматически" autocomplete="off">
-                  <button type="button" class="btn btn-secondary detect-btn" data-detect="andrey">Узнать</button>
-                </div>
-              </div>
-              <div class="field">
-                <label for="chatId-nastya">Chat ID — Настя</label>
-                <div class="inline-row">
-                  <input type="text" id="chatId-nastya" placeholder="Определится автоматически" autocomplete="off">
-                  <button type="button" class="btn btn-secondary detect-btn" data-detect="nastya">Узнать</button>
-                </div>
-              </div>
-              <label class="check" style="margin-top:10px">
-                <input type="checkbox" id="inboxToggle" checked>
-                Показывать входящие сообщения
-              </label>
-              <label class="check" style="margin-top:8px">
-                <input type="checkbox" id="autoSendToggle">
-                Отправлять QR автоматически (себе в мессенджер)
-              </label>
-
-              <div class="chat" id="chatFeed">
-                <div class="chat-empty" id="chatEmpty">Сообщений пока нет. Напишите боту в мессенджере — сообщение появится здесь.</div>
-              </div>
-              <div class="inline-row" style="margin-top:10px">
-                <input type="text" id="chatInput" placeholder="Сообщение…" autocomplete="off">
-                <button type="button" class="btn btn-secondary" id="chatSendBtn">Отправить</button>
-              </div>
-
-              <p class="hint" id="autoStatus"></p>
-
-              <div class="protect-box">
-                <div class="protect-title">Защита данных</div>
-                <div class="protect-actions">
-                  <button type="button" class="btn btn-secondary" id="setPinBtn">Установить PIN</button>
-                  <button type="button" class="btn btn-secondary btn-danger" id="wipeBtn">Стереть все данные</button>
-                </div>
-                <div id="pinSetup" hidden>
-                  <div class="field">
-                    <label for="pinNew">Новый PIN (мин. 4 символа)</label>
-                    <input type="password" id="pinNew" autocomplete="new-password">
-                  </div>
-                  <div class="field">
-                    <label for="pinRepeat">Повторите PIN</label>
-                    <input type="password" id="pinRepeat" autocomplete="new-password">
-                  </div>
-                  <div class="protect-actions">
-                    <button type="button" class="btn btn-secondary" id="pinSaveBtn">Сохранить PIN</button>
-                    <button type="button" class="btn btn-secondary" id="pinCancelBtn">Отмена</button>
-                  </div>
-                </div>
-                <p class="hint">Токен маскируется и хранится только в этом браузере; история сообщений не сохраняется на диск. PIN блокирует панель, включая авто-lock через 5 минут простоя. Учтите: тексты проходят через серверы мессенджера — для по-настоящему секретного общения используйте E2E-чат.</p>
-              </div>
-
-              <div class="auto-help" id="autoHelp"></div>
-              <button type="button" class="btn btn-secondary" id="sendNowBtn">Отправить QR сейчас</button>
-            </div>
-          </div>
-        </details>
       </section>
 
       <section class="preview-wrap">
@@ -657,11 +618,130 @@
         </div>
       </section>
     </div>
+    </section>
+
+    <section id="viewChat" hidden>
+      <div class="chat-layout">
+        <div class="chat-col">
+          <div class="field">
+            <label for="msgrSelect">Мессенджер</label>
+            <select id="msgrSelect">
+              <option value="telegram">Telegram</option>
+              <option value="max">MAX</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="botToken">Токен бота</label>
+            <input type="password" id="botToken" placeholder="Вставьте токен" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="chatId-andrey">Chat ID — Андрей</label>
+            <div class="inline-row">
+              <input type="text" id="chatId-andrey" placeholder="Определится автоматически" autocomplete="off">
+              <button type="button" class="btn btn-secondary detect-btn" data-detect="andrey">Узнать</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="chatId-nastya">Chat ID — Настя</label>
+            <div class="inline-row">
+              <input type="text" id="chatId-nastya" placeholder="Определится автоматически" autocomplete="off">
+              <button type="button" class="btn btn-secondary detect-btn" data-detect="nastya">Узнать</button>
+            </div>
+          </div>
+          <label class="check" style="margin-top:10px">
+            <input type="checkbox" id="inboxToggle" checked>
+            Показывать входящие сообщения
+          </label>
+          <label class="check" style="margin-top:8px">
+            <input type="checkbox" id="autoSendToggle">
+            Отправлять QR автоматически (себе в мессенджер)
+          </label>
+          <p class="hint" id="autoStatus"></p>
+          <button type="button" class="btn btn-secondary" id="sendNowBtn">Отправить QR сейчас</button>
+          <div class="auto-help" id="autoHelp"></div>
+        </div>
+
+        <div class="chat-col">
+          <div class="chat chat-feed-lg" id="chatFeed">
+            <div class="chat-empty" id="chatEmpty">Сообщений пока нет. Напишите боту в мессенджере — сообщение появится здесь.</div>
+          </div>
+          <div class="inline-row" style="margin-top:10px">
+            <input type="text" id="chatInput" placeholder="Сообщение…" autocomplete="off">
+            <button type="button" class="btn btn-secondary" id="chatSendBtn">Отправить</button>
+          </div>
+
+          <div class="protect-box">
+            <div class="protect-title">Защита данных</div>
+            <p class="hint" id="whoAmI"></p>
+            <div class="protect-actions">
+              <button type="button" class="btn btn-secondary" id="logoutBtn">Выйти</button>
+              <button type="button" class="btn btn-secondary btn-danger" id="wipeBtn">Стереть все данные</button>
+            </div>
+            <p class="hint">Логины и пароли хранятся только в этом браузере (хеш с солью), сессия живёт до закрытия вкладки и блокируется после 10 минут простоя. Токен маскируется; история сообщений не сохраняется на диск. Учтите: тексты проходят через серверы мессенджера — для по-настоящему секретного общения используйте E2E-чат.</p>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer class="footer">
     Всё генерируется локально в браузере — данные никуда не отправляются.
   </footer>
+</div>
+
+<div class="auth" id="authOverlay" hidden>
+  <div class="auth-card">
+    <span class="brand-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3z"/><path d="M21 17v4h-4"/></svg>
+    </span>
+
+    <div id="authLoginView">
+      <h2>Вход</h2>
+      <div class="field">
+        <label for="authLogin">Логин</label>
+        <input type="text" id="authLogin" autocomplete="username">
+      </div>
+      <div class="field">
+        <label for="authPass">Пароль</label>
+        <input type="password" id="authPass" autocomplete="current-password">
+      </div>
+      <button type="button" class="btn btn-primary" id="authSubmitBtn">Войти</button>
+      <p class="hint" id="authStatus"></p>
+      <button type="button" class="linklike" id="authResetBtn">Забыли пароль? Сбросить всё</button>
+    </div>
+
+    <div id="authSetupView" hidden>
+      <h2>Первичная настройка</h2>
+      <p class="hint">Создайте аккаунты для двух пользователей. Логины можно поменять.</p>
+      <div class="field">
+        <label for="suLogin1">Логин — Андрей</label>
+        <input type="text" id="suLogin1" value="andrey" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="suPass1">Пароль — Андрей</label>
+        <input type="password" id="suPass1" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <label for="suPass2">Повторите пароль</label>
+        <input type="password" id="suPass2" autocomplete="new-password">
+      </div>
+      <div class="divider"></div>
+      <div class="field">
+        <label for="suLogin2">Логин — Настя</label>
+        <input type="text" id="suLogin2" value="nastya" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="suPass3">Пароль — Настя</label>
+        <input type="password" id="suPass3" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <label for="suPass4">Повторите пароль</label>
+        <input type="password" id="suPass4" autocomplete="new-password">
+      </div>
+      <button type="button" class="btn btn-primary" id="authCreateBtn">Создать и войти</button>
+      <p class="hint" id="setupStatus"></p>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast" role="status"></div>
@@ -1158,16 +1238,14 @@
     roles: {
       andrey: { name: 'Андрей', chatId: '', userId: '' },
       nastya: { name: 'Настя', chatId: '', userId: '' }
-    },
-    pinHash: '',
-    pinSalt: ''
+    }
   };
   try {
     var savedAuto = JSON.parse(localStorage.getItem(AUTO_KEY) || 'null');
     if (savedAuto) {
       // Migrate the old single-chatId format.
       if (savedAuto.chatId && !savedAuto.roles) cfg.roles.andrey.chatId = savedAuto.chatId;
-      ['target', 'token', 'auto', 'activeRole', 'pinHash', 'pinSalt'].forEach(function (k) {
+      ['target', 'token', 'auto', 'activeRole'].forEach(function (k) {
         if (savedAuto[k] !== undefined) cfg[k] = savedAuto[k];
       });
       if (savedAuto.roles) {
@@ -1184,8 +1262,6 @@
     try { localStorage.setItem(AUTO_KEY, JSON.stringify(cfg)); } catch (e) { /* private mode */ }
   }
   function otherRole(key) { return key === 'andrey' ? 'nastya' : 'andrey'; }
-
-  var unlocked = !cfg.pinHash;
 
   var AUTO_HELP = {
     telegram: '<b>Telegram:</b><ol>' +
@@ -1206,7 +1282,7 @@
     el.classList.toggle('warn', !!isError);
   }
 
-  // ---------- PIN protection ----------
+  // ---------- Password hashing ----------
   function hashPin(pin, salt) {
     var msg = salt + ':' + pin;
     if (window.crypto && crypto.subtle && window.TextEncoder) {
@@ -1225,104 +1301,21 @@
     return Promise.resolve('fnv-' + h.toString(16) + '-' + msg.length);
   }
 
-  var pinFails = 0;
-  var pinLockUntil = 0;
-
-  function showLockView(locked) {
-    $('lockView').hidden = !locked;
-    $('chatView').hidden = locked;
-  }
-  showLockView(!unlocked);
-
-  function lockPanel() {
-    unlocked = false;
-    $('pinInput').value = '';
-    showLockView(true);
-  }
-
-  $('unlockBtn').addEventListener('click', function () {
-    if (Date.now() < pinLockUntil) return;
-    var pin = $('pinInput').value;
-    if (!pin) return;
-    hashPin(pin, cfg.pinSalt).then(function (h) {
-      if (h === cfg.pinHash) {
-        unlocked = true;
-        pinFails = 0;
-        $('lockStatus').textContent = '';
-        $('pinInput').value = '';
-        showLockView(false);
-      } else {
-        pinFails++;
-        if (pinFails >= 5) {
-          pinLockUntil = Date.now() + 30000;
-          pinFails = 0;
-          $('lockStatus').textContent = 'Слишком много попыток. Подождите 30 секунд.';
-        } else {
-          $('lockStatus').textContent = 'Неверный PIN (осталось попыток: ' + (5 - pinFails) + ')';
-        }
-      }
-    });
-  });
-  $('pinInput').addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') $('unlockBtn').click();
-  });
-
-  // Auto-lock after 5 minutes of inactivity.
-  var idleTimer = null;
-  function armIdleLock() {
-    clearTimeout(idleTimer);
-    if (!cfg.pinHash || !unlocked) return;
-    idleTimer = setTimeout(lockPanel, 5 * 60 * 1000);
-  }
-  document.addEventListener('pointerdown', armIdleLock);
-  document.addEventListener('keydown', armIdleLock);
-  armIdleLock();
-
-  $('setPinBtn').addEventListener('click', function () {
-    $('pinSetup').hidden = false;
-    $('pinNew').value = '';
-    $('pinRepeat').value = '';
-    $('pinNew').focus();
-  });
-  $('pinCancelBtn').addEventListener('click', function () {
-    $('pinSetup').hidden = true;
-  });
-  $('pinSaveBtn').addEventListener('click', function () {
-    var p1 = $('pinNew').value;
-    var p2 = $('pinRepeat').value;
-    if (p1.length < 4) { setAutoStatus('PIN должен быть не короче 4 символов', true); return; }
-    if (p1 !== p2) { setAutoStatus('PIN-коды не совпадают', true); return; }
-    cfg.pinSalt = Date.now().toString(36) + Math.random().toString(36).slice(2);
-    hashPin(p1, cfg.pinSalt).then(function (h) {
-      cfg.pinHash = h;
-      saveAuto();
-      unlocked = true;
-      $('pinSetup').hidden = true;
-      showLockView(false);
-      showToast('PIN установлен');
-    });
-  });
-
   $('wipeBtn').addEventListener('click', function () {
-    if (!window.confirm('Стереть токен, Chat ID, PIN и все настройки чата из этого браузера?')) return;
-    try { localStorage.removeItem(AUTO_KEY); } catch (e) { /* private mode */ }
+    if (!window.confirm('Стереть логины, пароли, токен, Chat ID и все настройки из этого браузера?')) return;
+    ['qrgen:auto', 'qrgen:auth', 'qrgen:session'].forEach(function (k) {
+      try { localStorage.removeItem(k); sessionStorage.removeItem(k); } catch (e) { /* private mode */ }
+    });
     location.reload();
   });
 
   // ---------- Config UI ----------
-  function updateRoleSeg() {
-    Array.prototype.forEach.call($('roleSeg').children, function (b) {
-      b.classList.toggle('active', b.dataset.role === cfg.activeRole);
-    });
+  function updateChatIdentity() {
+    $('whoAmI').textContent = sessionUser ?
+      'Вы вошли как ' + cfg.roles[cfg.activeRole].name + '.' :
+      'Вход не выполнен.';
     $('chatInput').placeholder = 'Сообщение для ' + cfg.roles[otherRole(cfg.activeRole)].name + '…';
   }
-  Array.prototype.forEach.call($('roleSeg').children, function (b) {
-    b.addEventListener('click', function () {
-      cfg.activeRole = b.dataset.role;
-      saveAuto();
-      updateRoleSeg();
-    });
-  });
 
   function updateAutoHelp() {
     $('autoHelp').innerHTML = AUTO_HELP[cfg.target] || '';
@@ -1356,7 +1349,7 @@
   $('chatId-andrey').value = cfg.roles.andrey.chatId;
   $('chatId-nastya').value = cfg.roles.nastya.chatId;
   $('autoSendToggle').checked = cfg.auto;
-  updateRoleSeg();
+  updateChatIdentity();
   updateAutoHelp();
 
   function networkError(err) {
@@ -1485,8 +1478,8 @@
   // can watch the same bot; duplicates are filtered by update id in memory.
   var pollBusy = false;
   function pollInbox() {
-    if (!unlocked || pollBusy || !cfg.token) return;
-    if (!$('autoSettings').open || !$('inboxToggle').checked) return;
+    if (!sessionUser || pollBusy || !cfg.token) return;
+    if ($('viewChat').hidden || !$('inboxToggle').checked) return;
     pollBusy = true;
     var done = function () { pollBusy = false; };
     if (cfg.target === 'telegram') {
@@ -1630,7 +1623,6 @@
       return;
     }
     if (!cfg.token) {
-      $('autoSettings').open = true;
       setAutoStatus('Укажите токен бота', true);
       return;
     }
@@ -1672,7 +1664,162 @@
     if (e.key === 'Enter') sendChatMessage();
   });
 
+  // ---------- View switcher (QR / Messages) ----------
+  function switchView(view) {
+    $('viewQr').hidden = view !== 'qr';
+    $('viewChat').hidden = view !== 'chat';
+    Array.prototype.forEach.call($('viewSeg').children, function (b) {
+      b.classList.toggle('active', b.dataset.view === view);
+    });
+  }
+  Array.prototype.forEach.call($('viewSeg').children, function (b) {
+    b.addEventListener('click', function () { switchView(b.dataset.view); });
+  });
+
+  // ---------- Login / password ----------
+  var AUTH_KEY = 'qrgen:auth';
+  var SESSION_KEY = 'qrgen:session';
+  var auth = { users: {} };
+  try {
+    var savedAuth = JSON.parse(localStorage.getItem(AUTH_KEY) || 'null');
+    if (savedAuth && savedAuth.users) auth = savedAuth;
+  } catch (e) { /* corrupted storage */ }
+
+  var sessionUser = null;
+  try {
+    var savedSession = sessionStorage.getItem(SESSION_KEY);
+    if (savedSession && auth.users[savedSession]) sessionUser = savedSession;
+  } catch (e) { /* private mode */ }
+
+  var authFails = 0;
+  var authLockUntil = 0;
+
+  function showAuth(view) {
+    var ov = $('authOverlay');
+    if (!view) {
+      ov.hidden = true;
+      return;
+    }
+    ov.hidden = false;
+    $('authLoginView').hidden = view !== 'login';
+    $('authSetupView').hidden = view !== 'setup';
+  }
+
+  function enterApp(userKey) {
+    sessionUser = userKey;
+    try { sessionStorage.setItem(SESSION_KEY, userKey); } catch (e) { /* private mode */ }
+    cfg.activeRole = userKey;
+    saveAuto();
+    $('authPass').value = '';
+    $('authStatus').textContent = '';
+    updateChatIdentity();
+    showAuth(null);
+    armIdleLogout();
+  }
+
+  function logout() {
+    sessionUser = null;
+    try { sessionStorage.removeItem(SESSION_KEY); } catch (e) { /* private mode */ }
+    updateChatIdentity();
+    showAuth('login');
+    $('authLogin').focus();
+  }
+  $('logoutBtn').addEventListener('click', logout);
+
+  // Auto-logout after 10 minutes of inactivity.
+  var logoutTimer = null;
+  function armIdleLogout() {
+    clearTimeout(logoutTimer);
+    if (!sessionUser) return;
+    logoutTimer = setTimeout(logout, 10 * 60 * 1000);
+  }
+  document.addEventListener('pointerdown', armIdleLogout);
+  document.addEventListener('keydown', armIdleLogout);
+
+  function doLogin() {
+    if (Date.now() < authLockUntil) return;
+    var login = $('authLogin').value.trim().toLowerCase();
+    var pass = $('authPass').value;
+    if (!login || !pass) {
+      $('authStatus').textContent = 'Введите логин и пароль';
+      return;
+    }
+    var found = null;
+    ['andrey', 'nastya'].forEach(function (k) {
+      if (auth.users[k] && auth.users[k].login.toLowerCase() === login) found = k;
+    });
+    if (!found) {
+      $('authStatus').textContent = 'Пользователь не найден';
+      return;
+    }
+    var u = auth.users[found];
+    hashPin(pass, u.salt).then(function (h) {
+      if (h === u.hash) {
+        authFails = 0;
+        enterApp(found);
+      } else {
+        authFails++;
+        if (authFails >= 5) {
+          authLockUntil = Date.now() + 30000;
+          authFails = 0;
+          $('authStatus').textContent = 'Слишком много попыток. Подождите 30 секунд.';
+        } else {
+          $('authStatus').textContent = 'Неверный пароль';
+        }
+      }
+    });
+  }
+  $('authSubmitBtn').addEventListener('click', doLogin);
+  $('authPass').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') doLogin();
+  });
+  $('authLogin').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') $('authPass').focus();
+  });
+
+  $('authCreateBtn').addEventListener('click', function () {
+    var st = $('setupStatus');
+    var l1 = $('suLogin1').value.trim();
+    var l2 = $('suLogin2').value.trim();
+    var p1 = $('suPass1').value, p2 = $('suPass2').value;
+    var p3 = $('suPass3').value, p4 = $('suPass4').value;
+    if (!l1 || !l2) { st.textContent = 'Укажите логины обоих пользователей'; return; }
+    if (l1.toLowerCase() === l2.toLowerCase()) { st.textContent = 'Логины должны различаться'; return; }
+    if (p1.length < 4 || p3.length < 4) { st.textContent = 'Пароли должны быть не короче 4 символов'; return; }
+    if (p1 !== p2 || p3 !== p4) { st.textContent = 'Пароли не совпадают со своими повторами'; return; }
+    var salt1 = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    var salt2 = salt1 + '-x';
+    Promise.all([hashPin(p1, salt1), hashPin(p3, salt2)]).then(function (hs) {
+      auth = {
+        users: {
+          andrey: { login: l1, name: 'Андрей', salt: salt1, hash: hs[0] },
+          nastya: { login: l2, name: 'Настя', salt: salt2, hash: hs[1] }
+        }
+      };
+      try { localStorage.setItem(AUTH_KEY, JSON.stringify(auth)); } catch (e) { /* private mode */ }
+      enterApp('andrey');
+      showToast('Аккаунты созданы');
+    });
+  });
+
+  $('authResetBtn').addEventListener('click', function () {
+    if (!window.confirm('Без восстановления: будут стёрты логины, пароли, токен и настройки. Продолжить?')) return;
+    ['qrgen:auto', 'qrgen:auth', 'qrgen:session'].forEach(function (k) {
+      try { localStorage.removeItem(k); sessionStorage.removeItem(k); } catch (e) { /* private mode */ }
+    });
+    location.reload();
+  });
+
   // ---------- Init ----------
+  if (!auth.users.andrey && !auth.users.nastya) {
+    showAuth('setup');
+  } else if (sessionUser) {
+    enterApp(sessionUser);
+  } else {
+    showAuth('login');
+  }
+  updateChatIdentity();
+  switchView('qr');
   selectType('link');
   checkContrast();
 })();
