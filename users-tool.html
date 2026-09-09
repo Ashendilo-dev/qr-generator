@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Генератор записей для users.js</title>
+<style>
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #eef1f8;
+    color: #16192b;
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid #e4e7f0;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(22,25,43,0.08);
+    padding: 26px;
+    width: 100%;
+    max-width: 480px;
+  }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  p.desc { color: #5f6680; font-size: 13.5px; margin: 0 0 18px; }
+  label { display: block; font-size: 13px; font-weight: 600; color: #5f6680; margin: 12px 0 5px; }
+  input, select {
+    width: 100%;
+    padding: 11px 13px;
+    border: 1.5px solid #e4e7f0;
+    border-radius: 11px;
+    background: #f7f8fc;
+    font: inherit;
+    font-size: 15px;
+    box-sizing: border-box;
+  }
+  input:focus, select:focus { outline: none; border-color: #4f46e5; background: #fff; }
+  button {
+    margin-top: 16px;
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: #fff;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { filter: brightness(1.08); }
+  .out-wrap { display: none; margin-top: 18px; }
+  textarea {
+    width: 100%;
+    min-height: 90px;
+    font-family: Consolas, Menlo, monospace;
+    font-size: 12.5px;
+    padding: 10px;
+    border: 1.5px solid #e4e7f0;
+    border-radius: 10px;
+    background: #f7f8fc;
+    box-sizing: border-box;
+    resize: vertical;
+  }
+  .hint { font-size: 12.5px; color: #5f6680; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Генератор пользователей</h1>
+  <p class="desc">Создаёт запись для файла <b>users.js</b>. Запустите эту страницу локально, скопируйте результат в users.js и закоммитьте.</p>
+
+  <label for="role">Роль (ключ в базе)</label>
+  <select id="role">
+    <option value="andrey">Андрей</option>
+    <option value="nastya">Настя</option>
+  </select>
+
+  <label for="login">Логин (для входа)</label>
+  <input type="text" id="login" placeholder="например, andrey">
+
+  <label for="name">Отображаемое имя</label>
+  <input type="text" id="name" placeholder="Андрей">
+
+  <label for="pass">Пароль</label>
+  <input type="password" id="pass" placeholder="Минимум 4 символа">
+
+  <button id="genBtn">Сгенерировать запись</button>
+
+  <div class="out-wrap" id="outWrap">
+    <label for="out">Строка для users.js</label>
+    <textarea id="out" readonly></textarea>
+    <p class="hint">Скопируйте и вставьте внутрь <code>window.QR_USERS = { ... }</code> в users.js вместо соответствующей строки-примера.</p>
+  </div>
+
+  <p class="hint" id="err" style="color:#b4232a"></p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  function hashPin(pin, salt) {
+    var msg = salt + ':' + pin;
+    if (window.crypto && crypto.subtle && window.TextEncoder) {
+      return crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg)).then(function (buf) {
+        return Array.prototype.map.call(new Uint8Array(buf), function (b) {
+          return ('0' + b.toString(16)).slice(-2);
+        }).join('');
+      });
+    }
+    return Promise.reject(new Error('Нужен HTTPS или локальный файл — WebCrypto недоступен'));
+  }
+
+  function esc(s) {
+    return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  }
+
+  document.getElementById('genBtn').addEventListener('click', function () {
+    var err = document.getElementById('err');
+    err.textContent = '';
+    var role = document.getElementById('role').value;
+    var login = document.getElementById('login').value.trim();
+    var name = document.getElementById('name').value.trim();
+    var pass = document.getElementById('pass').value;
+    if (!login) { err.textContent = 'Укажите логин'; return; }
+    if (!name) { err.textContent = 'Укажите имя'; return; }
+    if (pass.length < 4) { err.textContent = 'Пароль должен быть не короче 4 символов'; return; }
+    var salt = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    hashPin(pass, salt).then(function (h) {
+      var line = role + ": { login: '" + esc(login) + "', name: '" + esc(name) +
+        "', salt: '" + salt + "', hash: '" + h + "' },";
+      document.getElementById('out').value = line;
+      document.getElementById('outWrap').style.display = 'block';
+    }, function (e) {
+      err.textContent = e.message;
+    });
+  });
+})();
+</script>
+</body>
+</html>
