@@ -332,6 +332,18 @@
   }
   .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
   .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .btn-detect { margin-top: 0; }
+  .auto-help {
+    margin-top: 12px;
+    font-size: 12.5px;
+    color: var(--muted);
+    background: var(--field);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .auto-help ol { margin: 0; padding-left: 18px; }
+  .auto-help li { margin: 3px 0; }
+  #autoStatus { min-height: 18px; margin: 10px 0 0; }
 
   /* ---------- Footer / toast ---------- */
   .footer {
@@ -426,6 +438,42 @@
                 </select>
               </div>
             </div>
+          </div>
+        </details>
+
+        <details class="settings" id="autoSettings">
+          <summary>
+            Отправка в мессенджер
+            <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </summary>
+          <div class="settings-body">
+            <div class="field">
+              <label for="msgrSelect">Куда отправлять</label>
+              <select id="msgrSelect">
+                <option value="telegram">Telegram</option>
+                <option value="max">MAX</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="botToken">Токен бота</label>
+              <input type="password" id="botToken" placeholder="Вставьте токен" autocomplete="off">
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="chatIdInput">Chat ID</label>
+                <input type="text" id="chatIdInput" placeholder="Узнается кнопкой" autocomplete="off">
+              </div>
+              <div class="field">
+                <button type="button" class="btn btn-secondary btn-detect" id="detectChatBtn">Узнать ID</button>
+              </div>
+            </div>
+            <label class="check" style="margin-top:10px">
+              <input type="checkbox" id="autoSendToggle">
+              Отправлять автоматически при генерации
+            </label>
+            <div class="auto-help" id="autoHelp"></div>
+            <p class="hint" id="autoStatus"></p>
+            <button type="button" class="btn btn-secondary" id="sendNowBtn">Отправить сейчас</button>
           </div>
         </details>
       </section>
@@ -823,6 +871,8 @@
       payloadEl.textContent = result.text;
       payloadEl.title = result.text;
     }
+
+    maybeAutoSend();
   }
 
   // Re-render immediately when style settings change.
@@ -865,7 +915,7 @@
   $('bgColor').addEventListener('input', checkContrast);
 
   // ---------- Actions ----------
-  function renderAt(size) {
+  function renderCanvas(size) {
     var cfg = styleConfig();
     var holder = document.createElement('div');
     holder.style.cssText = 'position:fixed;left:-9999px;top:0;';
@@ -879,9 +929,14 @@
       correctLevel: QRCode.CorrectLevel[cfg.level]
     });
     var canvas = holder.querySelector('canvas');
-    var url = canvas ? canvas.toDataURL('image/png') : holder.querySelector('img').src;
+    var img = holder.querySelector('img');
     document.body.removeChild(holder);
-    return url;
+    return canvas ? canvas : (img ? img : null);
+  }
+
+  function renderAt(size) {
+    var c = renderCanvas(size);
+    return c && c.toDataURL ? c.toDataURL('image/png') : c.src;
   }
 
   $('downloadBtn').addEventListener('click', function () {
@@ -936,6 +991,226 @@
       window.open('https://t.me/share/url?url=' + encodeURIComponent(state.type === 'link' ? state.payload : '') +
         '&text=' + encodeURIComponent(state.payload), '_blank', 'noopener');
     }
+  });
+
+  // ---------- Messenger auto-send ----------
+  // Browser cannot write into a messenger by itself, so sending goes through
+  // the user's own bot: Telegram Bot API and MAX Bot API both allow CORS.
+  var AUTO_KEY = 'qrgen:auto';
+  var autoCfg = { target: 'telegram', token: '', chatId: '', auto: false };
+  try {
+    var savedAuto = JSON.parse(localStorage.getItem(AUTO_KEY) || 'null');
+    if (savedAuto) {
+      Object.keys(autoCfg).forEach(function (k) {
+        if (savedAuto[k] !== undefined) autoCfg[k] = savedAuto[k];
+      });
+    }
+  } catch (e) { /* corrupted storage */ }
+  function saveAuto() {
+    try { localStorage.setItem(AUTO_KEY, JSON.stringify(autoCfg)); } catch (e) { /* private mode */ }
+  }
+
+  var AUTO_HELP = {
+    telegram: '<b>Telegram:</b><ol>' +
+      '<li>Откройте @BotFather → <code>/newbot</code> → скопируйте токен.</li>' +
+      '<li>Вставьте токен в поле выше.</li>' +
+      '<li>Напишите вашему боту любое сообщение.</li>' +
+      '<li>Нажмите «Узнать ID».</li></ol>' +
+      'При отправке в чат приходят текст и картинка QR-кода. Токен хранится только в этом браузере.',
+    max: '<b>MAX:</b><ol>' +
+      '<li>Создайте бота и получите токен (dev.max.ru).</li>' +
+      '<li>Вставьте токен в поле выше.</li>' +
+      '<li>Напишите вашему боту любое сообщение.</li>' +
+      '<li>Нажмите «Узнать ID».</li></ol>' +
+      'В MAX отправляется текст (содержимое QR). Токен хранится только в этом браузере.'
+  };
+
+  function setAutoStatus(text, isError) {
+    var el = $('autoStatus');
+    el.textContent = text;
+    el.classList.toggle('warn', !!isError);
+  }
+
+  function updateAutoHelp() {
+    $('autoHelp').innerHTML = AUTO_HELP[autoCfg.target] || '';
+  }
+
+  $('msgrSelect').addEventListener('change', function () {
+    autoCfg.target = this.value;
+    saveAuto();
+    updateAutoHelp();
+    setAutoStatus('');
+  });
+  $('botToken').addEventListener('input', function () {
+    autoCfg.token = this.value.trim();
+    saveAuto();
+  });
+  $('chatIdInput').addEventListener('input', function () {
+    autoCfg.chatId = this.value.trim();
+    saveAuto();
+  });
+  $('autoSendToggle').addEventListener('change', function () {
+    autoCfg.auto = this.checked;
+    saveAuto();
+    setAutoStatus(this.checked ? 'Автоотправка включена' : '');
+  });
+
+  // Restore UI state.
+  $('msgrSelect').value = autoCfg.target;
+  $('botToken').value = autoCfg.token;
+  $('chatIdInput').value = autoCfg.chatId;
+  $('autoSendToggle').checked = autoCfg.auto;
+  updateAutoHelp();
+
+  $('detectChatBtn').addEventListener('click', function () {
+    if (!autoCfg.token) {
+      setAutoStatus('Сначала введите токен бота', true);
+      return;
+    }
+    setAutoStatus('Определяю Chat ID…');
+    if (autoCfg.target === 'telegram') {
+      fetch('https://api.telegram.org/bot' + encodeURIComponent(autoCfg.token) + '/getUpdates')
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!d.ok) throw new Error(d.description || 'Неверный токен');
+          var msgs = (d.result || []).filter(function (u) { return u.message && u.message.chat; });
+          if (!msgs.length) {
+            setAutoStatus('Напишите боту любое сообщение в Telegram, затем нажмите снова', true);
+            return;
+          }
+          var id = String(msgs[msgs.length - 1].message.chat.id);
+          autoCfg.chatId = id;
+          $('chatIdInput').value = id;
+          saveAuto();
+          setAutoStatus('Chat ID найден: ' + id);
+        })
+        .catch(function (err) {
+          setAutoStatus(err.message === 'Failed to fetch' ? 'Ошибка сети — проверьте подключение' : err.message, true);
+        });
+    } else {
+      fetch('https://platform-api2.max.ru/updates', { headers: { Authorization: autoCfg.token } })
+        .then(function (r) {
+          if (r.status === 401) throw new Error('Неверный токен');
+          return r.json();
+        })
+        .then(function (d) {
+          var ups = d.updates || [];
+          var chatId = null;
+          for (var i = ups.length - 1; i >= 0; i--) {
+            var m = ups[i].message;
+            if (m && m.recipient && m.recipient.chat_id) { chatId = m.recipient.chat_id; break; }
+            if (m && m.chat_id) { chatId = m.chat_id; break; }
+          }
+          if (chatId === null) {
+            setAutoStatus('Напишите боту любое сообщение в MAX, затем нажмите снова (до 30 секунд)', true);
+            return;
+          }
+          autoCfg.chatId = String(chatId);
+          $('chatIdInput').value = autoCfg.chatId;
+          saveAuto();
+          setAutoStatus('Chat ID найден: ' + autoCfg.chatId);
+        })
+        .catch(function (err) {
+          setAutoStatus(err.message === 'Failed to fetch' ? 'Ошибка сети — проверьте подключение' : err.message, true);
+        });
+    }
+  });
+
+  function sendToTelegram(payload) {
+    var base = 'https://api.telegram.org/bot' + encodeURIComponent(autoCfg.token) + '/';
+    return fetch(base + 'sendMessage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: autoCfg.chatId, text: payload })
+    }).then(function (r) {
+      return r.json();
+    }).then(function (d) {
+      if (!d.ok) throw new Error(d.description || 'Ошибка Telegram');
+    }).then(function () {
+      // Photo is a bonus: text message is already delivered at this point.
+      return new Promise(function (resolve) {
+        var c = renderCanvas(512);
+        if (!c || !c.toBlob) { resolve(); return; }
+        c.toBlob(function (blob) {
+          if (!blob) { resolve(); return; }
+          var fd = new FormData();
+          fd.append('chat_id', autoCfg.chatId);
+          fd.append('caption', 'QR-код (' + TYPES[state.type].label + ')');
+          fd.append('photo', blob, 'qrcode.png');
+          fetch(base + 'sendPhoto', { method: 'POST', body: fd })
+            .then(resolve, resolve);
+        }, 'image/png');
+      });
+    });
+  }
+
+  function sendToMax(payload, useUserId) {
+    var param = (useUserId ? 'user_id=' : 'chat_id=') + encodeURIComponent(autoCfg.chatId);
+    return fetch('https://platform-api2.max.ru/messages?' + param, {
+      method: 'POST',
+      headers: { Authorization: autoCfg.token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: payload })
+    }).then(function (r) {
+      // Dialogs in MAX are addressed by user_id; retry if chat_id was rejected.
+      if (r.status === 400 && !useUserId) return sendToMax(payload, true);
+      if (!r.ok) {
+        return r.json().catch(function () { return {}; }).then(function (d) {
+          throw new Error((d.message && String(d.message).trim()) || 'Ошибка MAX (код ' + r.status + ')');
+        });
+      }
+    });
+  }
+
+  function sendPayload(payload) {
+    if (autoCfg.target === 'telegram') return sendToTelegram(payload);
+    return sendToMax(payload, false);
+  }
+
+  var autoTimer = null;
+  var lastAutoPayload = null;
+  var lastAutoAt = 0;
+  var AUTO_DEBOUNCE = 2000;
+  var AUTO_MIN_INTERVAL = 5000;
+
+  function maybeAutoSend() {
+    if (!autoCfg.auto || !autoCfg.token || !autoCfg.chatId) return;
+    if (!state.payload || state.payload === lastAutoPayload) return;
+    clearTimeout(autoTimer);
+    autoTimer = setTimeout(function retry() {
+      var wait = AUTO_MIN_INTERVAL - (Date.now() - lastAutoAt);
+      if (wait > 0) {
+        autoTimer = setTimeout(retry, wait);
+        return;
+      }
+      sendPayload(state.payload).then(function () {
+        lastAutoPayload = state.payload;
+        lastAutoAt = Date.now();
+        showToast('Отправлено в ' + (autoCfg.target === 'telegram' ? 'Telegram' : 'MAX'));
+      }, function (err) {
+        setAutoStatus('Автоотправка: ' + err.message, true);
+      });
+    }, AUTO_DEBOUNCE);
+  }
+
+  $('sendNowBtn').addEventListener('click', function () {
+    if (!state.payload) {
+      setAutoStatus('Сначала введите данные для QR', true);
+      return;
+    }
+    if (!autoCfg.token || !autoCfg.chatId) {
+      $('autoSettings').open = true;
+      setAutoStatus('Укажите токен бота и Chat ID', true);
+      return;
+    }
+    setAutoStatus('Отправляю…');
+    sendPayload(state.payload).then(function () {
+      lastAutoPayload = state.payload;
+      lastAutoAt = Date.now();
+      setAutoStatus('');
+      showToast('Отправлено в ' + (autoCfg.target === 'telegram' ? 'Telegram' : 'MAX'));
+    }, function (err) {
+      setAutoStatus(err.message, true);
+    });
   });
 
   // ---------- Init ----------
