@@ -505,7 +505,6 @@
   .auth-card h2 { margin: 0 0 16px; font-size: 22px; letter-spacing: -0.02em; }
   .auth-card .field { text-align: left; }
   .auth-card .btn-primary { margin-top: 6px; }
-  .divider { height: 1px; background: var(--border); margin: 18px 0; }
   .linklike {
     background: none;
     border: none;
@@ -517,6 +516,9 @@
     margin-top: 10px;
   }
   .linklike:hover { color: var(--danger); }
+  .linkrow { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .linkrow .linklike { margin-top: 0; }
+  .seg button:disabled { opacity: 0.4; cursor: not-allowed; }
 
   :focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 2px; }
 </style>
@@ -707,39 +709,37 @@
       </div>
       <button type="button" class="btn btn-primary" id="authSubmitBtn">Войти</button>
       <p class="hint" id="authStatus"></p>
-      <button type="button" class="linklike" id="authResetBtn">Забыли пароль? Сбросить всё</button>
+      <div class="linkrow">
+        <button type="button" class="linklike" id="authRegisterLink">Создать аккаунт</button>
+        <button type="button" class="linklike" id="authResetBtn">Забыли пароль? Сбросить всё</button>
+      </div>
     </div>
 
     <div id="authSetupView" hidden>
-      <h2>Первичная настройка</h2>
-      <p class="hint">Создайте аккаунты для двух пользователей. Логины можно поменять.</p>
+      <h2>Регистрация</h2>
+      <p class="hint">Выберите, кто вы, и придумайте свой логин и пароль. Система определит вас по ним при входе.</p>
       <div class="field">
-        <label for="suLogin1">Логин — Андрей</label>
-        <input type="text" id="suLogin1" value="andrey" autocomplete="off">
+        <label>Кто вы</label>
+        <div class="seg" id="regRoleSeg">
+          <button type="button" data-role="andrey">Андрей</button>
+          <button type="button" data-role="nastya">Настя</button>
+        </div>
       </div>
       <div class="field">
-        <label for="suPass1">Пароль — Андрей</label>
-        <input type="password" id="suPass1" autocomplete="new-password">
+        <label for="regLogin">Логин</label>
+        <input type="text" id="regLogin" placeholder="Придумайте логин" autocomplete="off">
       </div>
       <div class="field">
-        <label for="suPass2">Повторите пароль</label>
-        <input type="password" id="suPass2" autocomplete="new-password">
-      </div>
-      <div class="divider"></div>
-      <div class="field">
-        <label for="suLogin2">Логин — Настя</label>
-        <input type="text" id="suLogin2" value="nastya" autocomplete="off">
+        <label for="regPass">Пароль</label>
+        <input type="password" id="regPass" placeholder="Минимум 4 символа" autocomplete="new-password">
       </div>
       <div class="field">
-        <label for="suPass3">Пароль — Настя</label>
-        <input type="password" id="suPass3" autocomplete="new-password">
+        <label for="regPass2">Повторите пароль</label>
+        <input type="password" id="regPass2" autocomplete="new-password">
       </div>
-      <div class="field">
-        <label for="suPass4">Повторите пароль</label>
-        <input type="password" id="suPass4" autocomplete="new-password">
-      </div>
-      <button type="button" class="btn btn-primary" id="authCreateBtn">Создать и войти</button>
+      <button type="button" class="btn btn-primary" id="authCreateBtn">Зарегистрироваться</button>
       <p class="hint" id="setupStatus"></p>
+      <button type="button" class="linklike" id="authBackLink">Назад ко входу</button>
     </div>
   </div>
 </div>
@@ -1703,6 +1703,7 @@
     ov.hidden = false;
     $('authLoginView').hidden = view !== 'login';
     $('authSetupView').hidden = view !== 'setup';
+    if (typeof updateAuthLinks === 'function') updateAuthLinks();
   }
 
   function enterApp(userKey) {
@@ -1777,28 +1778,67 @@
     if (e.key === 'Enter') $('authPass').focus();
   });
 
+  // ---------- Registration: each user creates their own account ----------
+  var regRole = null;
+
+  function registeredCount() {
+    return ['andrey', 'nastya'].filter(function (k) { return auth.users[k]; }).length;
+  }
+
+  function updateRegRoles() {
+    var free = ['andrey', 'nastya'].filter(function (k) { return !auth.users[k]; });
+    if (!regRole || auth.users[regRole]) regRole = free[0] || null;
+    Array.prototype.forEach.call($('regRoleSeg').children, function (b) {
+      b.disabled = !!auth.users[b.dataset.role];
+      b.classList.toggle('active', b.dataset.role === regRole);
+    });
+  }
+
+  Array.prototype.forEach.call($('regRoleSeg').children, function (b) {
+    b.addEventListener('click', function () {
+      if (b.disabled) return;
+      regRole = b.dataset.role;
+      updateRegRoles();
+    });
+  });
+
+  function updateAuthLinks() {
+    $('authRegisterLink').hidden = registeredCount() >= 2;
+    $('authBackLink').hidden = registeredCount() === 0;
+  }
+
+  $('authRegisterLink').addEventListener('click', function () {
+    updateRegRoles();
+    $('setupStatus').textContent = '';
+    $('authStatus').textContent = '';
+    showAuth('setup');
+  });
+  $('authBackLink').addEventListener('click', function () {
+    showAuth('login');
+  });
+
   $('authCreateBtn').addEventListener('click', function () {
     var st = $('setupStatus');
-    var l1 = $('suLogin1').value.trim();
-    var l2 = $('suLogin2').value.trim();
-    var p1 = $('suPass1').value, p2 = $('suPass2').value;
-    var p3 = $('suPass3').value, p4 = $('suPass4').value;
-    if (!l1 || !l2) { st.textContent = 'Укажите логины обоих пользователей'; return; }
-    if (l1.toLowerCase() === l2.toLowerCase()) { st.textContent = 'Логины должны различаться'; return; }
-    if (p1.length < 4 || p3.length < 4) { st.textContent = 'Пароли должны быть не короче 4 символов'; return; }
-    if (p1 !== p2 || p3 !== p4) { st.textContent = 'Пароли не совпадают со своими повторами'; return; }
-    var salt1 = Date.now().toString(36) + Math.random().toString(36).slice(2);
-    var salt2 = salt1 + '-x';
-    Promise.all([hashPin(p1, salt1), hashPin(p3, salt2)]).then(function (hs) {
-      auth = {
-        users: {
-          andrey: { login: l1, name: 'Андрей', salt: salt1, hash: hs[0] },
-          nastya: { login: l2, name: 'Настя', salt: salt2, hash: hs[1] }
-        }
-      };
+    if (!regRole) { st.textContent = 'Выберите, кто вы'; return; }
+    var login = $('regLogin').value.trim();
+    var p1 = $('regPass').value;
+    var p2 = $('regPass2').value;
+    if (!login) { st.textContent = 'Придумайте логин'; return; }
+    var clash = ['andrey', 'nastya'].some(function (k) {
+      return auth.users[k] && auth.users[k].login.toLowerCase() === login.toLowerCase();
+    });
+    if (clash) { st.textContent = 'Такой логин уже занят'; return; }
+    if (p1.length < 4) { st.textContent = 'Пароль должен быть не короче 4 символов'; return; }
+    if (p1 !== p2) { st.textContent = 'Пароли не совпадают'; return; }
+    var salt = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    hashPin(p1, salt).then(function (h) {
+      auth.users[regRole] = { login: login, name: cfg.roles[regRole].name, salt: salt, hash: h };
       try { localStorage.setItem(AUTH_KEY, JSON.stringify(auth)); } catch (e) { /* private mode */ }
-      enterApp('andrey');
-      showToast('Аккаунты созданы');
+      $('regLogin').value = '';
+      $('regPass').value = '';
+      $('regPass2').value = '';
+      enterApp(regRole);
+      showToast('Аккаунт создан');
     });
   });
 
@@ -1811,7 +1851,9 @@
   });
 
   // ---------- Init ----------
-  if (!auth.users.andrey && !auth.users.nastya) {
+  updateAuthLinks();
+  if (registeredCount() === 0) {
+    updateRegRoles();
     showAuth('setup');
   } else if (sessionUser) {
     enterApp(sessionUser);
