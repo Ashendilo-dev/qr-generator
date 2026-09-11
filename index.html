@@ -653,6 +653,7 @@
             </button>
           </div>
         </div>
+        <div class="hint" id="qrHistory" style="margin-top:12px"></div>
       </section>
     </div>
     </section>
@@ -1055,6 +1056,7 @@
     var payloadEl = $('payload');
     qrcodeEl.innerHTML = '';
     state.payload = result.text;
+    if (result.text) saveHistory(result.text);
 
     var warnEl = document.querySelector('.hint.warn:not(#contrastHint)');
     if (warnEl) warnEl.classList.remove('warn');
@@ -1106,6 +1108,12 @@
     maybeAutoSend();
   }
 
+
+  // ---------- Local QR history ----------
+  var HISTORY_KEY = 'qrgen:history';
+  function loadHistory() { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch (e) { return []; } }
+  function saveHistory(text) { if (!text) return; try { var h = loadHistory().filter(function (x) { return x.text !== text; }); h.unshift({ text: text, type: TYPES[state.type].label, at: Date.now() }); localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0, 12))); renderHistory(); } catch (e) {} }
+  function renderHistory() { var el = $('qrHistory'); if (!el) return; var h = loadHistory(); if (!h.length) { el.textContent = ''; return; } el.innerHTML = '<b>Последние QR:</b> ' + h.map(function (x, i) { return '<button type="button" class="linklike" data-history="' + i + '">' + x.type + ' · ' + new Date(x.at).toLocaleDateString() + '</button>'; }).join(' '); Array.prototype.forEach.call(el.querySelectorAll('[data-history]'), function (b) { b.addEventListener('click', function () { copyText(h[Number(b.dataset.history)].text).then(function () { showToast('Скопировано из истории'); }); }); }); }
   // Re-render immediately when style settings change.
   $('fgColor').addEventListener('input', renderQR);
   $('bgColor').addEventListener('input', renderQR);
@@ -1772,6 +1780,7 @@
   switchView('qr');
   selectType('link');
   checkContrast();
+  renderHistory();
 })();
 </script>
 
