@@ -1467,16 +1467,32 @@
   // Updates are not confirmed (no offset/marker is sent), so several browsers
   // can watch the same bot; duplicates are filtered by update id in memory.
   var pollBusy = false;
+  var nextUpdateId = 0;
+  var inboxErrorShown = false;
   function pollInbox() {
     if (!sessionUser || pollBusy || !cfg.token) return;
     if ($('viewChat').hidden || !$('inboxToggle').checked) return;
     pollBusy = true;
     var done = function () { pollBusy = false; };
-    fetch('https://api.telegram.org/bot' + encodeURIComponent(cfg.token) + '/getUpdates')
+    var url = 'https://api.telegram.org/bot' + encodeURIComponent(cfg.token) + '/getUpdates';
+    if (nextUpdateId) url += '?offset=' + encodeURIComponent(nextUpdateId);
+    fetch(url)
       .then(function (r) { return r.json(); })
       .then(function (d) {
-        if (!d.ok) return;
+        if (!d.ok) {
+          var description = d.description || 'Не удалось получить сообщения';
+          if (description.indexOf('webhook') !== -1 || description.indexOf('Conflict') !== -1) {
+            setAutoStatus('Telegram использует webhook. Удалите его командой /deleteWebhook или через Bot API.', true);
+          } else if (!inboxErrorShown) {
+            setAutoStatus('Входящие: ' + description, true);
+            inboxErrorShown = true;
+          }
+          done();
+          return;
+        }
+        inboxErrorShown = false;
         (d.result || []).forEach(function (u) {
+          nextUpdateId = Math.max(nextUpdateId, Number(u.update_id) + 1);
           var m = u.message;
           if (!m) return;
           var text = m.text || m.caption || '';
@@ -1500,8 +1516,16 @@
           var name = rk ? cfg.roles[rk].name : (m.chat && (m.chat.first_name || m.chat.title || m.chat.username)) || 'Telegram';
           addFeed(name, text, (m.date || 0) * 1000, false);
         });
+        if (nextUpdateId) {
+          fetch('https://api.telegram.org/bot' + encodeURIComponent(cfg.token) +
+            '/getUpdates?offset=' + encodeURIComponent(nextUpdateId) + '&limit=1')
+            .catch(function () {});
+        }
         done();
-      }, done);
+      }, function (err) {
+        setAutoStatus('Входящие: ' + networkError(err), true);
+        done();
+      });
   }
   setInterval(pollInbox, 5000);
 
