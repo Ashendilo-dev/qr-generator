@@ -665,6 +665,8 @@
       <div class="chat-input-row">
         <input type="text" id="chatInput" class="chat-input" placeholder="Сообщение…" autocomplete="off">
         <button type="button" class="btn btn-primary" id="chatSendBtn">Отправить</button>
+        <label class="btn btn-secondary" for="chatPhotoInput" style="width:auto;flex-shrink:0;white-space:nowrap">Фото</label>
+        <input type="file" id="chatPhotoInput" accept="image/*" hidden>
       </div>
       <p class="hint" id="autoStatus"></p>
 
@@ -1655,6 +1657,26 @@
     });
   }
   $('chatSendBtn').addEventListener('click', sendChatMessage);
+  function sendPhoto(file) {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { setAutoStatus('Фото больше 10 МБ', true); return; }
+    if (!cfg.token) { setAutoStatus('Введите токен бота', true); return; }
+    var me = cfg.roles[cfg.activeRole];
+    if (!me.chatId) { setAutoStatus('Сначала узнайте свой Chat ID', true); return; }
+    var partnerKey = otherRole(cfg.activeRole);
+    if (cfg.sendPartner && !cfg.roles[partnerKey].chatId) { setAutoStatus('Chat ID собеседника ещё не определён', true); return; }
+    setAutoStatus('Отправляю фото…');
+    var targets = [me.chatId];
+    if (cfg.sendPartner) targets.push(cfg.roles[partnerKey].chatId);
+    Promise.all(targets.map(function (chatId) {
+      var fd = new FormData();
+      fd.append('chat_id', chatId);
+      fd.append('photo', file, file.name || 'photo.jpg');
+      return fetch('https://api.telegram.org/bot' + encodeURIComponent(cfg.token) + '/sendPhoto', { method: 'POST', body: fd }).then(function (r) { return r.json(); }).then(function (d) { if (!d.ok) throw new Error(d.description || 'Ошибка Telegram'); });
+    })).then(function () { setAutoStatus(''); showToast('Фото отправлено'); }, function (err) { setAutoStatus('Фото: ' + networkError(err), true); });
+  }
+  $('chatPhotoInput').addEventListener('change', function () { sendPhoto(this.files[0]); this.value = ''; });
+
   $('chatInput').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') sendChatMessage();
   });
