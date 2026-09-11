@@ -578,6 +578,7 @@
     .chat-input-row label.btn { min-width: 76px; }
     .bubble { max-width: 86%; }
     .bubble-photo { max-width: 100%; max-height: 260px; border-radius: 10px; display: block; }
+    .photo-download { display: inline-block; margin-top: 8px; color: var(--accent); font-size: 13px; font-weight: 600; text-decoration: underline; }
     .settings summary { min-height: 46px; padding: 12px 13px; }
     .settings-body { padding-left: 13px; padding-right: 13px; }
     .protect-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -606,8 +607,8 @@
 
   <main class="card">
     <div class="seg viewseg" id="viewSeg">
-      <button type="button" data-view="qr" class="active">QR-код</button>
-      <button type="button" data-view="chat">Сообщения</button>
+      <button type="button" data-view="chat" class="active">Сообщения</button>
+      <button type="button" data-view="qr">QR-код</button>
     </div>
 
     <section id="viewQr">
@@ -1525,7 +1526,8 @@
     time.textContent = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
     meta.appendChild(b); meta.appendChild(time);
     var img = document.createElement('img'); img.className = 'bubble-photo'; img.src = fileUrl; img.alt = 'Фото из Telegram'; img.loading = 'lazy';
-    bubble.appendChild(meta); bubble.appendChild(img); row.appendChild(av); row.appendChild(bubble); feed.appendChild(row); feed.scrollTop = feed.scrollHeight;
+    var dl = document.createElement('a'); dl.className = 'photo-download'; dl.href = fileUrl; dl.download = 'photo.jpg'; dl.textContent = 'Скачать фото';
+    bubble.appendChild(meta); bubble.appendChild(img); bubble.appendChild(dl); row.appendChild(av); row.appendChild(bubble); feed.appendChild(row); feed.scrollTop = feed.scrollHeight;
   }
 
   // ---------- Incoming polling ----------
@@ -1734,7 +1736,7 @@
       fd.append('chat_id', chatId);
       fd.append('photo', file, file.name || 'photo.jpg');
       return fetch('https://api.telegram.org/bot' + encodeURIComponent(cfg.token) + '/sendPhoto', { method: 'POST', body: fd }).then(function (r) { return r.json(); }).then(function (d) { if (!d.ok) throw new Error(d.description || 'Ошибка Telegram'); });
-    })).then(function () { setAutoStatus(''); showToast('Фото отправлено'); }, function (err) { setAutoStatus('Фото: ' + networkError(err), true); });
+    })).then(function () { addFeedPhoto('Я (' + me.name + ')', URL.createObjectURL(file), Date.now(), true); setAutoStatus(''); showToast('Фото отправлено'); }, function (err) { setAutoStatus('Фото: ' + networkError(err), true); });
   }
   $('chatPhotoInput').addEventListener('change', function () { sendPhoto(this.files[0]); this.value = ''; });
 
@@ -1857,7 +1859,7 @@
     showAuth(true);
   }
   updateChatIdentity();
-  switchView('qr');
+  switchView('chat');
   selectType('link');
   checkContrast();
   renderHistory();
